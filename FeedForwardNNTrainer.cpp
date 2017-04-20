@@ -3,19 +3,11 @@ libcudann
 Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 */
 
-/*
- * FeedForwardNNTrainer.cpp
- *
- *  Created on: 19/nov/2010
- *      Author: donati
- */
-
 #include "FeedForwardNNTrainer.h"
 
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <float.h>
 #include <signal.h>
 
 #include <vector>
@@ -35,18 +27,6 @@ void terminate(int)
 	quit=true;
 }
 
-FeedForwardNNTrainer::FeedForwardNNTrainer() {
-	trainingSet = NULL;
-	testSet = NULL;
-	net = NULL;
-	bestMSETestNet = NULL;
-	bestMSETrainTestNet = NULL;
-	bestClassTestNet = NULL;
-}
-
-FeedForwardNNTrainer::~FeedForwardNNTrainer() {
-
-}
 
 ///choose a net to operate on and save after the training
 void FeedForwardNNTrainer::selectNet(FeedForwardNN & n) {
@@ -211,23 +191,23 @@ float FeedForwardNNTrainer::trainCpuBp(const int n, const float * params, const 
 	}
 
 	//declare an array of neurons to represent the neuron values
-	float * values = new float[numOfNeurons];
+	std::vector<float> values(numOfNeurons);
 	//declare an array of deltas to represent the gradients for the weight updates
-	float * deltas = new float[numOfNeurons];
+    std::vector<float> deltas(numOfNeurons);
 	//declare an array of weights to use for momentum
-	float * oldWeights = new float[numOfWeights];
+    std::vector<float> oldWeights(numOfWeights);
 	//declare an array of temporary weights to use for batch and similar methods
-	float * tmpWeights = new float[numOfWeights];
+    std::vector<float> tmpWeights(numOfWeights);
 
 
 	//declare a pointer to the net weights
 	float * weights;
 	weights=net->getWeights();
 	//declare a pointer to the net activation functions
-	int * actFuncts;
+	const int * actFuncts;
 	actFuncts=net->getActFuncts();
 	//declare a pointer to the net layers size
-	int * layersSize;
+	const int * layersSize;
 	layersSize=net->getLayersSize();
 
 	//declare some offsets to manage array indexes of each layer 'i'
@@ -299,13 +279,13 @@ float FeedForwardNNTrainer::trainCpuBp(const int n, const float * params, const 
 		for(int instance=0;instance<numOfInstances;instance++){
 
 			//computes a single instance forward of the backpropagation training
-			stepForward(values,weights,actFuncts,numOfLayers,layersSize,numOfInputsPerInstance,trainingSetInputs,&offsetIns[0],&offsetWeights[0],&offsetOuts[0],&order[0],instance);
+			stepForward(&values[0],weights,actFuncts,numOfLayers,layersSize,numOfInputsPerInstance,trainingSetInputs,&offsetIns[0],&offsetWeights[0],&offsetOuts[0],&order[0],instance);
 
 			//computes a single instance backward of the backpropagation training
-			stepBack(values,weights,deltas,actFuncts,numOfLayers,layersSize,numOfOutputsPerInstance,trainingSetOutputs,&offsetWeights[0],&offsetDeltas[0],&offsetOuts[0],&order[0],instance,errorFunc);
+			stepBack(&values[0],weights,&deltas[0],actFuncts,numOfLayers,layersSize,numOfOutputsPerInstance,trainingSetOutputs,&offsetWeights[0],&offsetDeltas[0],&offsetOuts[0],&order[0],instance,errorFunc);
 
 			//update the weights using the deltas
-			weightsUpdate(values,weights,weights,deltas,numOfLayers,layersSize,&offsetIns[0],&offsetWeights[0],&offsetDeltas[0],momentum,oldWeights,learningRate);
+			weightsUpdate(&values[0],weights,weights,&deltas[0],numOfLayers,layersSize,&offsetIns[0],&offsetWeights[0],&offsetDeltas[0],momentum,&oldWeights[0],learningRate);
 
 		}
 
@@ -361,12 +341,7 @@ float FeedForwardNNTrainer::trainCpuBp(const int n, const float * params, const 
 			}
 		}
 	}
-
-	delete [] values;
-	delete [] deltas;
-	delete [] oldWeights;
-	delete [] tmpWeights;
-
+    
 	if(printtype==PRINT_ALL)
 	printf("Training complete.\n");
 	if(testSet!=NULL){
@@ -447,22 +422,22 @@ float FeedForwardNNTrainer::trainCpuBatch(const int n, const float * params, con
 	}
 
 	//declare an array of neurons to represent the neuron values
-	float * values = new float[numOfNeurons];
+    std::vector<float> values(numOfNeurons);
 	//declare an array of deltas to represent the gradients for the weight updates
-	float * deltas = new float[numOfNeurons];
+    std::vector<float> deltas(numOfNeurons);
 	//declare an array of weights to use for momentum
-	float * oldWeights = new float[numOfWeights];
+    std::vector<float> oldWeights(numOfWeights);
 	//declare an array of temporary weights to use for batch and similar methods
-	float * tmpWeights = new float[numOfWeights];
+    std::vector<float> tmpWeights(numOfWeights);
 
 	//declare a pointer to the net weights
 	float * weights;
 	weights=net->getWeights();
 	//declare a pointer to the net activation functions
-	int * actFuncts;
+	const int * actFuncts;
 	actFuncts=net->getActFuncts();
 	//declare a pointer to the net layers size
-	int * layersSize;
+	const int * layersSize;
 	layersSize=net->getLayersSize();
 
 	//declare some offsets to manage array indexes of each layer 'i'
@@ -537,14 +512,14 @@ float FeedForwardNNTrainer::trainCpuBatch(const int n, const float * params, con
 		for(int instance=0;instance<numOfInstances;instance++){
 
 			//computes a single instance forward of the backpropagation training
-			stepForward(values,weights,actFuncts,numOfLayers,layersSize,numOfInputsPerInstance,trainingSetInputs,&offsetIns[0],&offsetWeights[0],&offsetOuts[0],&order[0],instance);
+			stepForward(&values[0],weights,actFuncts,numOfLayers,layersSize,numOfInputsPerInstance,trainingSetInputs,&offsetIns[0],&offsetWeights[0],&offsetOuts[0],&order[0],instance);
 
 			//computes a single instance backward of the backpropagation training
-			stepBack(values,weights,deltas,actFuncts,numOfLayers,layersSize,numOfOutputsPerInstance,trainingSetOutputs,&offsetWeights[0],&offsetDeltas[0],&offsetOuts[0],&order[0],instance,errorFunc);
+			stepBack(&values[0],weights,&deltas[0],actFuncts,numOfLayers,layersSize,numOfOutputsPerInstance,trainingSetOutputs,&offsetWeights[0],&offsetDeltas[0],&offsetOuts[0],&order[0],instance,errorFunc);
 
 			//update the weights using the deltas
 			//no momentum is used, it will be added after all the instances
-			weightsUpdate(values,weights,tmpWeights,deltas,numOfLayers,layersSize,&offsetIns[0],&offsetWeights[0],&offsetDeltas[0],0,oldWeights,learningRate);
+			weightsUpdate(&values[0],weights,&tmpWeights[0],&deltas[0],numOfLayers,layersSize,&offsetIns[0],&offsetWeights[0],&offsetDeltas[0],0,&oldWeights[0],learningRate);
 		}
 
 
@@ -611,13 +586,7 @@ float FeedForwardNNTrainer::trainCpuBatch(const int n, const float * params, con
 		}
 	}
 
-
-	delete [] values;
-	delete [] deltas;
-	delete [] oldWeights;
-	delete [] tmpWeights;
-
-
+    
 	if(printtype==PRINT_ALL)
 	printf("Training complete.\n");
 	if(testSet!=NULL){

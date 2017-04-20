@@ -3,15 +3,11 @@ libcudann
 Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 */
 
-/*
- * FeedForwardNN.h
- *
- *  Created on: Nov 17, 2010
- *      Author: donati
- */
 
 #ifndef FEEDFORWARDNN_H_
 #define FEEDFORWARDNN_H_
+
+#include <vector>
 
 #include "ActivationFunctions.h"
 #include "LearningSet.h"
@@ -20,7 +16,8 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 
 class FeedForwardNN {
 public:
-	FeedForwardNN();
+    FeedForwardNN() {}
+
 	// constructor with int (number of layers), array (layer sizes), array (activation functions)
 	FeedForwardNN(const int, const int *, const int *);
 	/* constructor from txt file
@@ -40,38 +37,34 @@ public:
 	 * spaces or \n do not matter
 	 */
 	FeedForwardNN(const char *);
-	// copy constructor
-	FeedForwardNN(const FeedForwardNN &);
-	//assignment operator
-	FeedForwardNN & operator = (const FeedForwardNN &);
-	virtual ~FeedForwardNN();
+
 	// initialize randomly the network weights between min and max
 	void initWeights(float min =-INITWEIGHTMAX,float max = INITWEIGHTMAX);
 	// initialize the network weights with Widrow Nguyen algorithm
 	void initWidrowNguyen(LearningSet &);
 	// computes the net outputs
-	void compute(const float *, float *);
+	void compute(const float *, float *) const;
 	// computes the MSE on a set
-	float computeMSE(LearningSet &);
+	float computeMSE(LearningSet &) const;
 	// returns the index of the most high output neuron (classification)
-	int classificate(const float * inputs);
+	int classificate(const float * inputs)  const;
 	// computes the correct percentage of classification on a set (0 to 1)
-	float classificatePerc(LearningSet &);
+	float classificatePerc(LearningSet &)  const;
 	// saves the network to a txt file
-	void saveToTxt(const char *);
+	void saveToTxt(const char *) const;
 	float getWeight(int ind) const;
     void setWeight(int ind, float weight);
-	int *getLayersSize() const;
+    const int *getLayersSize() const;
     int getNumOfLayers() const;
     int getNumOfWeights() const;
-    float *getWeights() const;
-    int *getActFuncts() const;
+    float * getWeights();
+    const int * getActFuncts() const;
 private:
-	int numOfLayers;
-	int * layersSize;
-	int * actFuncts;
-	int numOfWeights;
-	float * weights;
+	int numOfLayers = 0;
+	std::vector<int> layersSize;
+	std::vector<int> actFuncts;
+	int numOfWeights = 0;
+    std::vector<float> weights;
 };
 
 #endif /* FEEDFORWARDNN_H_ */

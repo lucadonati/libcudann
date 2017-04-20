@@ -34,8 +34,7 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 
 class FeedForwardNNTrainer {
 public:
-	FeedForwardNNTrainer();
-	virtual ~FeedForwardNNTrainer();
+    FeedForwardNNTrainer() {}
 	///choose a net to operate on and save after the training
 	void selectNet(FeedForwardNN &);
 	///choose the training set
@@ -88,12 +87,12 @@ private:
 	float GPUclassificatePerc(float * devValues, const  float * devWeights, const  int * actFuncts, const  int numOfLayers, const  int * layersSize, const int numOfInstances, const int numOfOutputsPerInstance,float * devSetOutputs,const int * offsetIns, const int * offsetWeights, const int * offsetOuts);
 #endif
 
-	FeedForwardNN * net;
-	LearningSet * trainingSet;
-	LearningSet * testSet;
-	FeedForwardNN * bestMSETestNet;
-	FeedForwardNN * bestMSETrainTestNet;
-	FeedForwardNN * bestClassTestNet;
+	FeedForwardNN * net = nullptr;
+	LearningSet * trainingSet = nullptr;
+	LearningSet * testSet = nullptr;
+	FeedForwardNN * bestMSETestNet = nullptr;
+	FeedForwardNN * bestMSETrainTestNet = nullptr;
+	FeedForwardNN * bestClassTestNet = nullptr;
 };
 
 #endif /* FEEDFORWARDNNTRAINER_H_ */

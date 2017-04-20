@@ -18,7 +18,7 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 
 #include <vector>
 
-#include "RandomGenerator.h"
+#include "../RandomGenerator.h"
 
 #define GAUSSIAN_LIM 3.0f
 

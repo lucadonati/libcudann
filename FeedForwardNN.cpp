@@ -3,12 +3,6 @@ libcudann
 Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 */
 
-/*
- * FeedForwardNN.cpp
- *
- *  Created on: Nov 17, 2010
- *      Author: donati
- */
 
 #include "FeedForwardNN.h"
 
@@ -20,23 +14,16 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 
 #include "RandomGenerator.h"
 
-FeedForwardNN::FeedForwardNN(){
-	numOfLayers=0;
-	numOfWeights=0;
-	layersSize=NULL;
-	actFuncts=NULL;
-	weights=NULL;
-}
 // constructor with int (number of layers), array (layer sizes), array (activation functions)
 FeedForwardNN::FeedForwardNN(const int num, const int * siz, const int * funct) {
 	if(num<2){printf("BAD NETWORK INITIALIZATION\n");exit(1);}
 
 	numOfLayers=num;
-	layersSize = new int[numOfLayers];
+	layersSize.resize(numOfLayers);
 	for(int i=0;i<numOfLayers;i++){
 		layersSize[i]=siz[i];
 	}
-	actFuncts = new int[numOfLayers];
+	actFuncts.resize(numOfLayers);
 	for(int i=0;i<numOfLayers;i++){
 		actFuncts[i]=funct[i];
 	}
@@ -44,7 +31,7 @@ FeedForwardNN::FeedForwardNN(const int num, const int * siz, const int * funct) 
 	for(int i=0;i<numOfLayers-1;i++){
 		numOfWeights+=(layersSize[i]+1)*layersSize[i+1];
 	}
-	weights = new float[numOfWeights];
+	weights.resize(numOfWeights);
 	initWeights();
 }
 
@@ -72,81 +59,23 @@ FeedForwardNN::FeedForwardNN(const char * s){
 	if (f!=NULL){
 		//file wrong format
 		if(fscanf(f,"%d",&numOfLayers)<1){printf("WRONG NETWORK FILE FORMAT\n");exit(1);}
-		layersSize = new int[numOfLayers];
+		layersSize.resize(numOfLayers);
 		for(int i=0;i<numOfLayers;i++)
 			if(fscanf(f,"%d",&layersSize[i])<1){printf("WRONG NETWORK FILE FORMAT\n");exit(1);}
-		actFuncts = new int[numOfLayers];
+		actFuncts.resize(numOfLayers);
 		for(int i=0;i<numOfLayers;i++)
 			if(fscanf(f,"%d",&actFuncts[i])<1){printf("WRONG NETWORK FILE FORMAT\n");exit(1);}
 		if(fscanf(f,"%d",&numOfWeights)<1){printf("WRONG NETWORK FILE FORMAT\n");exit(1);}
-		weights = new float[numOfWeights];
+		weights.resize(numOfWeights);
 		for(int i=0;i<numOfWeights;i++)
 			if(fscanf(f,"%f",&weights[i])<1){printf("WRONG NETWORK FILE FORMAT\n");exit(1);}
 		fclose(f);
 	}
 	else{printf("COULDN'T OPEN THE NETWORK FILE\n");exit(1);}
 }
-// copy constructor
-FeedForwardNN::FeedForwardNN(const FeedForwardNN & oldNet){
-	numOfLayers=oldNet.numOfLayers;
-
-	layersSize = new int[numOfLayers];
-	for(int i=0;i<numOfLayers;i++){
-		layersSize[i]=oldNet.layersSize[i];
-	}
-
-	actFuncts = new int[numOfLayers];
-	for(int i=0;i<numOfLayers;i++){
-		actFuncts[i]=oldNet.actFuncts[i];
-	}
-	numOfWeights = oldNet.numOfWeights;
-
-	weights = new float[numOfWeights];
-	for(int i=0;i<numOfWeights;i++){
-		weights[i]=oldNet.weights[i];
-	}
-}
-// assignment operator
-FeedForwardNN & FeedForwardNN::operator = (const FeedForwardNN & oldNet){
-	if (this != &oldNet){ // protect against invalid self-assignment
-		// 1: allocate new memory and copy the elements
-
-		int * new_layersSize = new int[oldNet.numOfLayers];
-		for(int i=0;i<oldNet.numOfLayers;i++){
-			new_layersSize[i]=oldNet.layersSize[i];
-		}
-		int * new_actFuncts = new int[oldNet.numOfLayers];
-		for(int i=0;i<oldNet.numOfLayers;i++){
-			new_actFuncts[i]=oldNet.actFuncts[i];
-		}
-		float * new_weights = new float[oldNet.numOfWeights];
-		for(int i=0;i<oldNet.numOfWeights;i++){
-			new_weights[i]=oldNet.weights[i];
-		}
-		// 2: deallocate old memory
-		delete [] layersSize;
-		delete [] actFuncts;
-		delete [] weights;
-		// 3: assign the new memory to the object
-		layersSize=new_layersSize;
-		actFuncts=new_actFuncts;
-		weights=new_weights;
-		numOfLayers=oldNet.numOfLayers;
-		numOfWeights = oldNet.numOfWeights;
-		}
-		// by convention, always return *this
-	return *this;
-}
-
-FeedForwardNN::~FeedForwardNN() {
-	delete[] layersSize;
-	delete[] actFuncts;
-	delete[] weights;
-}
 
 // initialize randomly the network weights between min and max
-void FeedForwardNN::initWeights(float min, float max)
-{
+void FeedForwardNN::initWeights(float min, float max) {
 	for(int i=0;i<numOfWeights;i++){
 		//TEST WEIGHTS
 		//weights[i]=2;
@@ -156,7 +85,7 @@ void FeedForwardNN::initWeights(float min, float max)
 }
 
 // initialize the network weights with Widrow Nguyen algorithm
-void FeedForwardNN::initWidrowNguyen(LearningSet & set){
+void FeedForwardNN::initWidrowNguyen(LearningSet & set) {
 	float min=set.getInputs()[0];
 	float max=set.getInputs()[0];
 
@@ -194,18 +123,16 @@ void FeedForwardNN::initWidrowNguyen(LearningSet & set){
 }
 
 // computes the net outputs
-void FeedForwardNN::compute(const float * inputs, float * outputs){
+void FeedForwardNN::compute(const float * inputs, float * outputs) const {
 
 	int offset = 0;
-	float * in;
-	float * out;
 
+    std::vector<float> in(layersSize[0] + 1);
 	//loads the inputs
-	in = new float[layersSize[0]+1];
 	for(int i=0;i<layersSize[0];i++)
 		in[i]=inputs[i];
 
-	out = new float[0];
+    std::vector<float> out;
 
 	//loops the layers
 	for(int i=0;i<numOfLayers-1;i++){
@@ -218,8 +145,7 @@ void FeedForwardNN::compute(const float * inputs, float * outputs){
 			offset+=(layersSize[j]+1)*layersSize[j+1];
 		}
 
-		delete[] out;
-		out = new float [layersSize[i+1]];
+		out.resize(layersSize[i+1]);
 
 		float tot=0;
 
@@ -236,23 +162,19 @@ void FeedForwardNN::compute(const float * inputs, float * outputs){
 		}
 
 
-		delete[] in;
-		in = new float[layersSize[i+1]+1];
+		in.resize(layersSize[i+1]+1);
 		for(int l=0;l<layersSize[i+1];l++){
 				in[l]=out[l];
 		}
 	}
-	delete[] in;
 
 	for(int i=0;i<layersSize[numOfLayers-1];i++)
 		outputs[i]=out[i];
-
-	delete[] out;
-
+    
 }
 
 // computes the MSE on a set
-float FeedForwardNN::computeMSE(LearningSet & set){
+float FeedForwardNN::computeMSE(LearningSet & set) const {
 	float mse=0;
 
 	int numOfInstances=set.getNumOfInstances();
@@ -279,9 +201,9 @@ float FeedForwardNN::computeMSE(LearningSet & set){
 }
 
 // returns the index of the most high output neuron (classification)
-int FeedForwardNN::classificate(const float * inputs){
+int FeedForwardNN::classificate(const float * inputs) const {
 	int outputsSize=layersSize[numOfLayers-1];
-	float max=0;
+	float max=-10000;
 	int indmax=0;
 	std::vector<float> outputs(outputsSize);
 
@@ -296,7 +218,7 @@ int FeedForwardNN::classificate(const float * inputs){
 }
 
 // computes the fraction of correct classification on a set (0 to 1)
-float FeedForwardNN::classificatePerc(LearningSet & set){
+float FeedForwardNN::classificatePerc(LearningSet & set) const {
 	int cont=0;
 	int numOfInstances=set.getNumOfInstances();
 	int numOfInputsPerInstance=set.getNumOfInputsPerInstance();
@@ -311,7 +233,7 @@ float FeedForwardNN::classificatePerc(LearningSet & set){
 }
 
 // saves the network to a txt file
-void FeedForwardNN::saveToTxt(const char * s){
+void FeedForwardNN::saveToTxt(const char * s) const {
 	FILE * f;
 	f=fopen(s,"w");
 	fprintf(f,"%d\n",numOfLayers);
@@ -326,9 +248,9 @@ void FeedForwardNN::saveToTxt(const char * s){
 	fclose(f);
 }
 
-int *FeedForwardNN::getLayersSize() const
+const int * FeedForwardNN::getLayersSize() const
 {
-    return layersSize;
+    return &layersSize[0];
 }
 
 int FeedForwardNN::getNumOfLayers() const
@@ -341,25 +263,21 @@ int FeedForwardNN::getNumOfWeights() const
     return numOfWeights;
 }
 
-float *FeedForwardNN::getWeights() const
-{
-    return weights;
+float * FeedForwardNN::getWeights() {
+    return &weights[0];
 }
 
 
 
-int *FeedForwardNN::getActFuncts() const
-{
-    return actFuncts;
+const int * FeedForwardNN::getActFuncts() const {
+    return &actFuncts[0];
 }
 
-float FeedForwardNN::getWeight(int ind) const
-{
+float FeedForwardNN::getWeight(int ind) const {
 	return weights[ind];
 }
 
-void FeedForwardNN::setWeight(int ind, float weight)
-{
+void FeedForwardNN::setWeight(int ind, float weight) {
 	weights[ind]=weight;
 }
 

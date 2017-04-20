@@ -3,20 +3,13 @@ libcudann
 Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 */
 
-/*
- * GAFeedForwardNN.h
- *
- *  Created on: Jan 20, 2011
- *      Author: donati
- */
-
 #ifndef GAFEEDFORWARDNN_H_
 #define GAFEEDFORWARDNN_H_
 
-#include "FeedForwardNN.h"
-#include "LearningSet.h"
+#include "../FeedForwardNN.h"
+#include "../LearningSet.h"
 #include "FloatChromosome.h"
-#include "FeedForwardNNTrainer.h"
+#include "../FeedForwardNNTrainer.h"
 
 
 #define ROULETTE_WHEEL 0
