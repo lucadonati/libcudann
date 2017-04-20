@@ -3,6 +3,8 @@ libcudann
 Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 */
 
+#define USE_CUDA
+
 #include <stdio.h>
 #include <iostream>
 
@@ -11,7 +13,7 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 
 #include <vector>
 
-#include "genetics/GAFeedForwardNN.h"
+//#include "genetics/GAFeedForwardNN.h"
 #include "FeedForwardNN.h"
 #include "LearningSet.h"
 #include "FeedForwardNNTrainer.h"
@@ -59,15 +61,20 @@ int main(){
 
 	//TRAINING EXAMPLE
 
-	LearningSet trainingSet("mushroom.train");
-	LearningSet testSet("mushroom.test");
+	//LearningSet trainingSet(R"(C:\Users\Luca\Desktop\libcudann.build\mushroom.train)");
+	//LearningSet testSet(R"(C:\Users\Luca\Desktop\libcudann.build\mushroom.test)");
+
+    LearningSet trainingSet(R"(C:\Users\Luca\Desktop\adidas_project\trunk\vision_code\feature_extraction.build\train.set)");
+    LearningSet testSet(R"(C:\Users\Luca\Desktop\adidas_project\trunk\vision_code\feature_extraction.build\train.set)");
 
 	//layer sizes
-	int layers[]={125,100,30,2};
+	//int layers[]={125,100,2};
+    //int functs[] = { 3,3,1 };
+    int layers[] = { 200 * 200 * 3,1000, 500, 500,500,200,100,4 };
 	//activation functions (1=sigm,2=tanh)
-	int functs[]={3,3,3,1};
+	int functs[]={3,2,3,2,3,2,3,1};
 	//declare the network with the number of layers
-	FeedForwardNN mynet(4,layers,functs);
+	FeedForwardNN mynet(8,layers,functs);
 	
 	FeedForwardNNTrainer trainer;
 	trainer.selectNet(mynet);
@@ -93,7 +100,8 @@ int main(){
 	//SHUFFLE_ON - SHUFFLE_OFF
 	//error computation ERROR_LINEAR - ERROR_TANH
 	
-	float param[]={TRAIN_CPU,ALG_BP,0.00,20,4,0.1,0,SHUFFLE_ON,ERROR_TANH};
+	float param[]={TRAIN_GPU,ALG_BATCH,0.00,10000,10,0.01,0.0,SHUFFLE_ON,ERROR_LINEAR};
+    //float param[] = { TRAIN_CPU,ALG_BP,0.00,20,4,0.1,0,SHUFFLE_ON,ERROR_TANH };
 	trainer.train(9,param);
 	 
 	

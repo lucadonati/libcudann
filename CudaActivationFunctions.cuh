@@ -13,9 +13,10 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 #ifndef CUDAACTIVATIONFUNCTIONS_H_
 #define CUDAACTIVATIONFUNCTIONS_H_
 
-#define ACT_LINEAR		0
-#define ACT_SIGMOID		1
-#define ACT_TANH		2
+#define ACT_LINEAR      0
+#define ACT_SIGMOID     1
+#define ACT_TANH        2
+#define ACT_RELU        3
 
 //macro for the span size of the function (for error calculation of backpropagation)
 #define spanS(act)(\
