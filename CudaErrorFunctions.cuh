@@ -20,9 +20,9 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 
 //this macro computes the new error after the application of a function (tanh is more aggressive error targeting)
 #define calcErr(error,errorFunc)(\
-	errorFunc == ERROR_TANH ?\
-	error < -.9999999f ? -17.0f:error > .9999999f ? 17.0f: log((1.0f + error) / (1.0f - error)):\
-	error\
+    errorFunc == ERROR_TANH ?\
+    error < -.9999999f ? -17.0f:error > .9999999f ? 17.0f: log((1.0f + error) / (1.0f - error)):\
+    error\
 )
 
 //computes the error function for (number) elements of (desired)-(neurons) and store the results in (deltas)

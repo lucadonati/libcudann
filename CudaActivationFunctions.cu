@@ -20,22 +20,22 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 #define clip(x, lo, hi) (((x) < (lo)) ? (lo) : (((x) > (hi)) ? (hi) : (x)))
 
 __global__ void actLinear(float * neurons, const int number){
-	//global thread index
-	const int g_tid = BLOCKSIZE * blockIdx.x + threadIdx.x;
-	if(g_tid<number)
-		neurons[g_tid]=neurons[g_tid];
+    //global thread index
+    const int g_tid = BLOCKSIZE * blockIdx.x + threadIdx.x;
+    if(g_tid<number)
+        neurons[g_tid]=neurons[g_tid];
 }
 __global__ void actSigmoid(float * neurons, const int number){
-	//global thread index
-	const int g_tid = BLOCKSIZE * blockIdx.x + threadIdx.x;
-	if(g_tid<number)
-		neurons[g_tid]=(1.0f/(1.0f+exp(-neurons[g_tid])));
+    //global thread index
+    const int g_tid = BLOCKSIZE * blockIdx.x + threadIdx.x;
+    if(g_tid<number)
+        neurons[g_tid]=(1.0f/(1.0f+exp(-neurons[g_tid])));
 }
 __global__ void actTanh(float * neurons, const int number){
-	//global thread index
-	const int g_tid = BLOCKSIZE * blockIdx.x + threadIdx.x;
-	if(g_tid<number)
-		neurons[g_tid]=(2.0f/(1.0f+exp(-neurons[g_tid])))-1.0f;
+    //global thread index
+    const int g_tid = BLOCKSIZE * blockIdx.x + threadIdx.x;
+    if(g_tid<number)
+        neurons[g_tid]=(2.0f/(1.0f+exp(-neurons[g_tid])))-1.0f;
 }
 __global__ void actRelu(float * neurons, const int number) {
     //global thread index
@@ -44,27 +44,27 @@ __global__ void actRelu(float * neurons, const int number) {
         neurons[g_tid] = neurons[g_tid] > 0 ? neurons[g_tid] : 0;
 }
 __global__ void derivLinear(float * deltas, const float * neurons, const int number){
-	//global thread index
-	const int g_tid = BLOCKSIZE * blockIdx.x + threadIdx.x;
-	if(g_tid<number){
-		deltas[g_tid]*=1;
-	}
+    //global thread index
+    const int g_tid = BLOCKSIZE * blockIdx.x + threadIdx.x;
+    if(g_tid<number){
+        deltas[g_tid]*=1;
+    }
 }
 __global__ void derivSigmoid(float * deltas, const float * neurons, const int number){
-	//global thread index
-	const int g_tid = BLOCKSIZE * blockIdx.x + threadIdx.x;
-	if(g_tid<number){
-		const float y=clip(neurons[g_tid],0.01f,0.99f);
-		deltas[g_tid]*=y*(1.0f-y);
-	}
+    //global thread index
+    const int g_tid = BLOCKSIZE * blockIdx.x + threadIdx.x;
+    if(g_tid<number){
+        const float y=clip(neurons[g_tid],0.01f,0.99f);
+        deltas[g_tid]*=y*(1.0f-y);
+    }
 }
 __global__ void derivTanh(float * deltas, const float * neurons, const int number){
-	//global thread index
-	const int g_tid = BLOCKSIZE * blockIdx.x + threadIdx.x;
-	if(g_tid<number){
-		const float y=clip(neurons[g_tid],-0.98f,0.98f);
-		deltas[g_tid]*=0.5f*(1.0f-(y*y));
-	}
+    //global thread index
+    const int g_tid = BLOCKSIZE * blockIdx.x + threadIdx.x;
+    if(g_tid<number){
+        const float y=clip(neurons[g_tid],-0.98f,0.98f);
+        deltas[g_tid]*=0.5f*(1.0f-(y*y));
+    }
 }
 __global__ void derivRelu(float * deltas, const float * neurons, const int number) {
     //global thread index
@@ -80,11 +80,11 @@ void computeActFunct(float * neurons, const int number, const int funct){
 int numBlocks = number/BLOCKSIZE+1;
 
 switch(funct){
-	case ACT_LINEAR:	break;//actSigmoid<<<numBlocks, BLOCKSIZE>>>(neurons,number);//printf("LINEAR SHOULD NOT BE USED FOR NOW\n");exit(1);
-	case ACT_SIGMOID:	actSigmoid<<<numBlocks, BLOCKSIZE>>>(neurons,number);            break;
-	case ACT_TANH:		actTanh<<<numBlocks, BLOCKSIZE>>>(neurons,number);               break;
+    case ACT_LINEAR:    break;//actSigmoid<<<numBlocks, BLOCKSIZE>>>(neurons,number);//printf("LINEAR SHOULD NOT BE USED FOR NOW\n");exit(1);
+    case ACT_SIGMOID:    actSigmoid<<<numBlocks, BLOCKSIZE>>>(neurons,number);            break;
+    case ACT_TANH:        actTanh<<<numBlocks, BLOCKSIZE>>>(neurons,number);               break;
     case ACT_RELU:      actRelu<<<numBlocks, BLOCKSIZE>>>(neurons, number);              break;
-	default:			printf("FUNCTION NOT IMPLEMENTED YET\n");exit(1);                break;
+    default:            printf("FUNCTION NOT IMPLEMENTED YET\n");exit(1);                break;
 }
 
 
@@ -96,11 +96,11 @@ void computeDerivFunct(float * deltas, const float * neurons, const int number, 
 int numBlocks = number/BLOCKSIZE+1;
 
 switch(funct){
-	case ACT_LINEAR:	break;//derivSigmoid<<<numBlocks, BLOCKSIZE>>>(deltas,neurons,number);//printf("LINEAR SHOULD NOT BE USED FOR DERIVATION\n");exit(1);
-	case ACT_SIGMOID:	derivSigmoid<<<numBlocks, BLOCKSIZE>>>(deltas,neurons,number);	 break;
-	case ACT_TANH:		derivTanh<<<numBlocks, BLOCKSIZE>>>(deltas,neurons,number);		 break;
+    case ACT_LINEAR:    break;//derivSigmoid<<<numBlocks, BLOCKSIZE>>>(deltas,neurons,number);//printf("LINEAR SHOULD NOT BE USED FOR DERIVATION\n");exit(1);
+    case ACT_SIGMOID:    derivSigmoid<<<numBlocks, BLOCKSIZE>>>(deltas,neurons,number);     break;
+    case ACT_TANH:        derivTanh<<<numBlocks, BLOCKSIZE>>>(deltas,neurons,number);         break;
     case ACT_RELU:      derivRelu<<<numBlocks, BLOCKSIZE>>>(deltas,neurons,number);      break;
-	default:			printf("FUNCTION NOT IMPLEMENTED YET\n");exit(1);			     break;
+    default:            printf("FUNCTION NOT IMPLEMENTED YET\n");exit(1);                 break;
 }
 
 

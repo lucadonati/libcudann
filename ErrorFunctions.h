@@ -12,13 +12,13 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 
 //returns the new error after the application of a function (tanh is more aggressive error targeting)
 inline float errorFunction(float error, int func){
-	switch(func){
-			case ERROR_TANH:	if		(error < -.9999999)			return -17.0;
-								else if	(error >  .9999999)			return 17.0;
-								else 								return log((1.0 + error) / (1.0 - error));
-			case ERROR_LINEAR:	return error;
-			default:			printf("FUNCTION NOT IMPLEMENTED YET\n");exit(1);
-		}
+    switch(func){
+            case ERROR_TANH:    if        (error < -.9999999)            return -17.0;
+                                else if    (error >  .9999999)            return 17.0;
+                                else                                 return log((1.0 + error) / (1.0 - error));
+            case ERROR_LINEAR:    return error;
+            default:            printf("FUNCTION NOT IMPLEMENTED YET\n");exit(1);
+        }
 }
 
 

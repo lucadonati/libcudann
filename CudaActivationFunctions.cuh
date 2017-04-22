@@ -20,8 +20,8 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 
 //macro for the span size of the function (for error calculation of backpropagation)
 #define spanS(act)(\
-	act == ACT_TANH ? 2:\
-	1\
+    act == ACT_TANH ? 2:\
+    1\
 )
 
 //computes the activation function for (number) elements of (neurons) and store the results in (neurons)

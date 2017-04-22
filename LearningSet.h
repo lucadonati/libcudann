@@ -54,7 +54,7 @@ public:
         }
         else { printf("COULDN'T OPEN THE LEARNING SET FILE\n"); exit(1); }
     }
-	
+    
 
     float * getInputs() {
         return &inputs[0];
@@ -87,9 +87,9 @@ public:
     }
 
 private:
-	int numOfInstances = 0;
-	int numOfInputsPerInstance = 0;
-	int numOfOutputsPerInstance = 0;
+    int numOfInstances = 0;
+    int numOfInputsPerInstance = 0;
+    int numOfOutputsPerInstance = 0;
 
     std::vector<float> inputs;
     std::vector<float> outputs;
