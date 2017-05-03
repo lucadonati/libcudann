@@ -3,24 +3,20 @@ libcudann
 Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 */
 
+#pragma once
 
-#ifndef FEEDFORWARDNN_H_
-#define FEEDFORWARDNN_H_
-
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cmath>
 
 #include <vector>
 
 #include "ActivationFunctions.h"
 #include "LearningSet.h"
 
-
 #include "RandomGenerator.h"
 
-#define INITWEIGHTMAX 0.1
+const double INITWEIGHTMAX = 0.1;
 
 class FeedForwardNN {
 public:
@@ -97,7 +93,7 @@ public:
     }
 
     // initialize the network weights with Widrow Nguyen algorithm
-    void initWidrowNguyen(LearningSet & set) {
+    void initWidrowNguyen(const LearningSet & set) {
         float min = set.getInputs()[0];
         float max = set.getInputs()[0];
 
@@ -298,5 +294,3 @@ private:
     int numOfWeights = 0;
     std::vector<float> weights;
 };
-
-#endif /* FEEDFORWARDNN_H_ */

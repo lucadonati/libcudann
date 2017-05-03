@@ -3,9 +3,7 @@ libcudann
 Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 */
 
-
-#ifndef ERRORFUNCTIONS_H_
-#define ERRORFUNCTIONS_H_
+#pragma once
 
 #define ERROR_LINEAR 0
 #define ERROR_TANH 1
@@ -20,6 +18,3 @@ inline float errorFunction(float error, int func){
             default:            printf("FUNCTION NOT IMPLEMENTED YET\n");exit(1);
         }
 }
-
-
-#endif /* ERRORFUNCTIONS_H_ */

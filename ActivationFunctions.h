@@ -3,22 +3,17 @@ libcudann
 Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 */
 
-/*
- * ActivationFunctions.h
- *
- *  Created on: Nov 24, 2010
- *      Author: donati
- */
-
-#ifndef ACTIVATIONFUNCTIONS_H_
-#define ACTIVATIONFUNCTIONS_H_
+#pragma once
 
 #define ACT_LINEAR        0
 #define ACT_SIGMOID        1
 #define ACT_TANH        2
 #define ACT_RELU        3
 
-#define clip(x, lo, hi) (((x) < (lo)) ? (lo) : (((x) > (hi)) ? (hi) : (x)))
+template <typename T1, typename T2, typename T3>
+inline T1 clip(T1 && x, T2 && lo, T3 && hi) {
+    return (x < lo) ? lo : ((x > hi) ? (hi) : (x));
+}
 
  //returns the value of the activation function
 inline float actFunction(int act, float x) {
@@ -51,5 +46,3 @@ inline float spanSize(int act) {
         default:            printf("FUNCTION NOT IMPLEMENTED YET\n"); exit(1);
     }
 }
-
-#endif /* ACTIVATIONFUNCTIONS_H_ */

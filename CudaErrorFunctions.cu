@@ -3,13 +3,6 @@ libcudann
 Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 */
 
-/*
- * CudaErrorFunctions.cu
- *
- *  Created on: Jan 10, 2011
- *      Author: donati
- */
-
 #include "CudaErrorFunctions.cuh"
 
 #include <stdlib.h>

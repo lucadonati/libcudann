@@ -5,11 +5,11 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 
 #define USE_CUDA
 
-#include <stdio.h>
+#include <cstdio>
 #include <iostream>
 
-#include <math.h>
-#include <stdlib.h>
+#include <cmath>
+#include <cstdlib>
 
 #include <vector>
 
@@ -80,10 +80,10 @@ void test_all(const FeedForwardNN & mynet, const LearningSet & testSet) {
 int main(){
 
     //TRAINING EXAMPLE
-    //LearningSet trainingSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\parity13.train)");
-    //LearningSet testSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\parity13.test)");
-    //std::vector<int> layers = { 13,300,200,1 };
-    //std::vector<int> functs = { 2,3,2,1 };
+    LearningSet trainingSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\parity13.train)");
+    LearningSet testSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\parity13.test)");
+    std::vector<int> layers = { 13,300,200,1 };
+    std::vector<int> functs = { 2,3,2,1 };
 
     //LearningSet trainingSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\xor.train)");
     //LearningSet testSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\xor.train)");
@@ -96,10 +96,10 @@ int main(){
     //std::vector<int> layers={125,100,2};
     //std::vector<int> functs = { 3,3,1 };
 
-    LearningSet trainingSet(R"(C:\Users\Luca\Desktop\adidas_project\trunk\vision_code\feature_extraction.build\train.set)");
-    LearningSet testSet(R"(C:\Users\Luca\Desktop\adidas_project\trunk\vision_code\feature_extraction.build\train.set)");
-    std::vector<int> layers = { 200 * 200 * 3, 1000, 1000,1000,1000,4 };
-    std::vector<int> functs={3,3,3,3,3,1};
+    //LearningSet trainingSet(R"(C:\Users\Luca\Desktop\adidas_project\trunk\vision_code\feature_extraction.build\train.set)");
+    //LearningSet testSet(R"(C:\Users\Luca\Desktop\adidas_project\trunk\vision_code\feature_extraction.build\train.set)");
+    //std::vector<int> layers = { 200 * 200 * 3, 1000, 1000,1000,1000,4 };
+    //std::vector<int> functs={3,3,3,3,3,1};
 
     //layer sizes
     //activation functions (1=sigm,2=tanh,3=relu)
@@ -135,7 +135,7 @@ int main(){
     //error computation ERROR_LINEAR - ERROR_TANH
     
    // mynet.initWidrowNguyen(trainingSet);
-    float param[]={TRAIN_GPU,ALG_BATCH,0.00, 120,10,0.0001,0.7,SHUFFLE_ON,ERROR_LINEAR };
+    float param[]={TRAIN_GPU,ALG_BATCH,0.00, 2120,10,0.0001,0.7,SHUFFLE_ON,ERROR_LINEAR };
     //float param[] = { TRAIN_CPU,ALG_BP,0.00,20,4,0.1,0,SHUFFLE_ON,ERROR_TANH };
     trainer.train(9,param);
      
@@ -145,7 +145,7 @@ int main(){
     //mseT.saveToTxt("../mseTmushrooms.net");
     //mseTT.saveToTxt("../mseTTmushrooms.net");
     cl.saveToTxt("../clmushrooms.net");
-    std::puts("saved");
+    std::cout << "saved" << "\n";
 
     test_classification(cl, testSet);
     test_all(cl, testSet);

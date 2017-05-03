@@ -3,8 +3,7 @@ libcudann
 Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 */
 
-#ifndef LEARNINGSET_H_
-#define LEARNINGSET_H_
+#pragma once
 
 #include <vector>
 
@@ -60,6 +59,10 @@ public:
         return &inputs[0];
     }
 
+    const float * getInputs() const {
+        return &inputs[0];
+    }
+
     int getNumOfInputsPerInstance() const {
         return numOfInputsPerInstance;
     }
@@ -94,5 +97,3 @@ private:
     std::vector<float> inputs;
     std::vector<float> outputs;
 };
-
-#endif /* LEARNINGSET_H_ */

@@ -3,13 +3,6 @@ libcudann
 Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 */
 
-/*
- * CudaActivationFunctions.cu
- *
- *  Created on: Jan 10, 2011
- *      Author: donati
- */
-
 #include "CudaActivationFunctions.cuh"
 
 #include <stdlib.h>

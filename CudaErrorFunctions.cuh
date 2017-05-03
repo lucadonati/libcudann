@@ -35,4 +35,5 @@ void computeMaxes(const int nOfInst, const int nOfOut, const float * neurons, in
 void addMomentum(float * weights, float * oldWeights,const int number, const float momentum);
 //translate a matrix x-y (rows large (x) and columns high (y)) to one y-x
 void translateMatrix(const int x, const int y, const float * in, float * out);
+
 #endif /* CUDAERRORFUNCTION_H_ */
