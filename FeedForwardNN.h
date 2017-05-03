@@ -27,7 +27,7 @@ public:
     FeedForwardNN() {}
 
     // constructor with int (number of layers), array (layer sizes), array (activation functions)
-    FeedForwardNN::FeedForwardNN(const int num, const int * siz, const int * funct) {
+    FeedForwardNN(const int num, const int * siz, const int * funct) {
         if (num<2) { printf("BAD NETWORK INITIALIZATION\n"); exit(1); }
 
         numOfLayers = num;
@@ -135,7 +135,7 @@ public:
     }
 
     // computes the net outputs
-    void FeedForwardNN::compute(const float * inputs, float * outputs) const {
+    void compute(const float * inputs, float * outputs) const {
 
         int offset = 0;
 

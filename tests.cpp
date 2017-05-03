@@ -80,27 +80,31 @@ void test_all(const FeedForwardNN & mynet, const LearningSet & testSet) {
 int main(){
 
     //TRAINING EXAMPLE
-    LearningSet trainingSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\xor.train)");
-    LearningSet testSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\xor.train)");
+    //LearningSet trainingSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\parity13.train)");
+    //LearningSet testSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\parity13.test)");
+    //std::vector<int> layers = { 13,300,200,1 };
+    //std::vector<int> functs = { 2,3,2,1 };
+
+    //LearningSet trainingSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\xor.train)");
+    //LearningSet testSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\xor.train)");
+    //std::vector<int> layers = { 2,8,4,1 };
+    //std::vector<int> functs = { 3,3,3,1 };
+
 
     //LearningSet trainingSet(R"(C:\Users\Luca\Desktop\libcudann.build\mushroom.train)");
     //LearningSet testSet(R"(C:\Users\Luca\Desktop\libcudann.build\mushroom.test)");
+    //std::vector<int> layers={125,100,2};
+    //std::vector<int> functs = { 3,3,1 };
 
-    //LearningSet trainingSet(R"(C:\Users\Luca\Desktop\adidas_project\trunk\vision_code\feature_extraction.build\train.set)");
-    //LearningSet testSet(R"(C:\Users\Luca\Desktop\adidas_project\trunk\vision_code\feature_extraction.build\train.set)");
+    LearningSet trainingSet(R"(C:\Users\Luca\Desktop\adidas_project\trunk\vision_code\feature_extraction.build\train.set)");
+    LearningSet testSet(R"(C:\Users\Luca\Desktop\adidas_project\trunk\vision_code\feature_extraction.build\train.set)");
+    std::vector<int> layers = { 200 * 200 * 3, 1000, 1000,1000,1000,4 };
+    std::vector<int> functs={3,3,3,3,3,1};
 
     //layer sizes
     //activation functions (1=sigm,2=tanh,3=relu)
 
-    std::vector<int> layers = {2,8,4,1};
-    std::vector<int> functs = { 3,3,3,1 };
-
-    //std::vector<int> layers={125,100,2};
-    //std::vector<int> functs = { 3,3,1 };
     
-    
-    //std::vector<int> layers = { 200 * 200 * 3, 1000, 500,200,100,4 };
-    //std::vector<int> functs={2,3,3,3,3,1};
     //declare the network with the number of layers
     //FeedForwardNN mynet(3, layers, functs);
     FeedForwardNN mynet(layers.size(),&layers[0],&functs[0]);
@@ -130,7 +134,8 @@ int main(){
     //SHUFFLE_ON - SHUFFLE_OFF
     //error computation ERROR_LINEAR - ERROR_TANH
     
-    float param[]={TRAIN_GPU,ALG_BATCH,0.00,4000,20,0.3,0.0,SHUFFLE_ON,ERROR_LINEAR };
+   // mynet.initWidrowNguyen(trainingSet);
+    float param[]={TRAIN_GPU,ALG_BATCH,0.00, 120,10,0.0001,0.7,SHUFFLE_ON,ERROR_LINEAR };
     //float param[] = { TRAIN_CPU,ALG_BP,0.00,20,4,0.1,0,SHUFFLE_ON,ERROR_TANH };
     trainer.train(9,param);
      
@@ -139,11 +144,11 @@ int main(){
     
     //mseT.saveToTxt("../mseTmushrooms.net");
     //mseTT.saveToTxt("../mseTTmushrooms.net");
-    //cl.saveToTxt("../clmushrooms.net");
+    cl.saveToTxt("../clmushrooms.net");
+    std::puts("saved");
 
-
-    test_classification(mynet, testSet);
-    test_all(mynet, testSet);
+    test_classification(cl, testSet);
+    test_all(cl, testSet);
 
     getchar();
 
