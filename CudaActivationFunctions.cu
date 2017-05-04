@@ -74,8 +74,8 @@ int numBlocks = number/BLOCKSIZE+1;
 
 switch(funct){
     case ACT_LINEAR:    break;//actSigmoid<<<numBlocks, BLOCKSIZE>>>(neurons,number);//printf("LINEAR SHOULD NOT BE USED FOR NOW\n");exit(1);
-    case ACT_SIGMOID:    actSigmoid<<<numBlocks, BLOCKSIZE>>>(neurons,number);            break;
-    case ACT_TANH:        actTanh<<<numBlocks, BLOCKSIZE>>>(neurons,number);               break;
+    case ACT_SIGMOID:   actSigmoid<<<numBlocks, BLOCKSIZE>>>(neurons,number);            break;
+    case ACT_TANH:      actTanh<<<numBlocks, BLOCKSIZE>>>(neurons,number);               break;
     case ACT_RELU:      actRelu<<<numBlocks, BLOCKSIZE>>>(neurons, number);              break;
     default:            printf("FUNCTION NOT IMPLEMENTED YET\n");exit(1);                break;
 }
@@ -86,15 +86,15 @@ switch(funct){
 //computes the derivation function for (number) elements of (neurons) and multiplies and stores the results with and in (delta)
 void computeDerivFunct(float * deltas, const float * neurons, const int number, const int funct){
 
-int numBlocks = number/BLOCKSIZE+1;
+    int numBlocks = number/BLOCKSIZE+1;
 
-switch(funct){
-    case ACT_LINEAR:    break;//derivSigmoid<<<numBlocks, BLOCKSIZE>>>(deltas,neurons,number);//printf("LINEAR SHOULD NOT BE USED FOR DERIVATION\n");exit(1);
-    case ACT_SIGMOID:    derivSigmoid<<<numBlocks, BLOCKSIZE>>>(deltas,neurons,number);     break;
-    case ACT_TANH:        derivTanh<<<numBlocks, BLOCKSIZE>>>(deltas,neurons,number);         break;
-    case ACT_RELU:      derivRelu<<<numBlocks, BLOCKSIZE>>>(deltas,neurons,number);      break;
-    default:            printf("FUNCTION NOT IMPLEMENTED YET\n");exit(1);                 break;
-}
+    switch(funct){
+        case ACT_LINEAR:    break;//derivSigmoid<<<numBlocks, BLOCKSIZE>>>(deltas,neurons,number);//printf("LINEAR SHOULD NOT BE USED FOR DERIVATION\n");exit(1);
+        case ACT_SIGMOID:   derivSigmoid<<<numBlocks, BLOCKSIZE>>>(deltas,neurons,number);     break;
+        case ACT_TANH:      derivTanh<<<numBlocks, BLOCKSIZE>>>(deltas,neurons,number);         break;
+        case ACT_RELU:      derivRelu<<<numBlocks, BLOCKSIZE>>>(deltas,neurons,number);      break;
+        default:            printf("FUNCTION NOT IMPLEMENTED YET\n");exit(1);                 break;
+    }
 
 
 }

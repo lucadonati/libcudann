@@ -5,6 +5,7 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 
 #pragma once
 
+
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
@@ -22,7 +23,7 @@ class FeedForwardNN {
 public:
     FeedForwardNN() {}
 
-    // constructor with int (number of layers), array (layer sizes), array (activation functions)
+    /// constructor with int (number of layers), array (layer sizes), array (activation functions)
     FeedForwardNN(const int num, const int * siz, const int * funct) {
         if (num<2) { printf("BAD NETWORK INITIALIZATION\n"); exit(1); }
 
@@ -43,22 +44,22 @@ public:
         initWeights();
     }
 
-    /* constructor from txt file
-    * format is:
-    *
-    * NUMBER_OF_LAYERS
-    * LAYER1_SIZE LAYER2_SIZE LAYER3_SIZE ...
-    * LAYER2_ACT_FUNC LAYER3_ACT_FUNC ...
-    * NUMBER_OF_WEIGHTS
-    * WEIGHT1
-    * WEIGHT2
-    * WEIGHT3
-    * .
-    * .
-    * .
-    *
-    * spaces or \n do not matter
-    */
+    ///constructor from txt file
+    /// format is:
+    ///
+    /// NUMBER_OF_LAYERS
+    /// LAYER1_SIZE LAYER2_SIZE LAYER3_SIZE ...
+    /// LAYER2_ACT_FUNC LAYER3_ACT_FUNC ...
+    /// NUMBER_OF_WEIGHTS
+    /// WEIGHT1
+    /// WEIGHT2
+    /// WEIGHT3
+    /// .
+    /// .
+    /// .
+    ///
+    /// spaces or \n do not matter
+    ///
     FeedForwardNN(const char * s) {
         FILE * f;
         f = fopen(s, "r");
@@ -82,7 +83,7 @@ public:
         else { printf("COULDN'T OPEN THE NETWORK FILE\n"); exit(1); }
     }
 
-    // initialize randomly the network weights between min and max
+    /// initialize randomly the network weights between min and max
     void initWeights(float min = -INITWEIGHTMAX, float max = INITWEIGHTMAX) {
         for (int i = 0; i<numOfWeights; i++) {
             //TEST WEIGHTS
@@ -92,7 +93,7 @@ public:
         }
     }
 
-    // initialize the network weights with Widrow Nguyen algorithm
+    /// initialize the network weights with Widrow Nguyen algorithm
     void initWidrowNguyen(const LearningSet & set) {
         float min = set.getInputs()[0];
         float max = set.getInputs()[0];
@@ -130,7 +131,7 @@ public:
                         weights[offsetWeights[i] + j*(layersSize[i] + 1) + k] = 2 * mult*gen_random_real(0, 1) - mult;
     }
 
-    // computes the net outputs
+    /// computes the net outputs
     void compute(const float * inputs, float * outputs) const {
 
         int offset = 0;
@@ -181,8 +182,8 @@ public:
 
     }
 
-    // computes the MSE on a set
-    float computeMSE(LearningSet & set) const {
+    /// computes the MSE on a set
+    float computeMSE(const LearningSet & set) const {
         float mse = 0;
 
         int numOfInstances = set.getNumOfInstances();
@@ -192,8 +193,8 @@ public:
         std::vector<float> netOuts(numOfOutputsPerInstance);
 
         //local variables for faster access
-        float * inputs = set.getInputs();
-        float * outputs = set.getOutputs();
+        auto * inputs = set.getInputs();
+        auto * outputs = set.getOutputs();
 
         for (int instance = 0; instance<numOfInstances; instance++) {
             //compute using the inputs with an offset to point to each instance
@@ -208,7 +209,7 @@ public:
         return mse;
     }
 
-    // returns the index of the most high output neuron (classification)
+    /// returns the index of the most high output neuron (classification)
     int classificate(const float * inputs) const {
         int outputsSize = layersSize[numOfLayers - 1];
         float max = -10000;
@@ -225,8 +226,8 @@ public:
         return indmax;
     }
 
-    // computes the fraction of correct classification on a set (0 to 1)
-    float classificatePerc(LearningSet & set) const {
+    /// computes the fraction of correct classification on a set (0 to 1)
+    float classificatePerc(const LearningSet & set) const {
         int cont = 0;
         int numOfInstances = set.getNumOfInstances();
         int numOfInputsPerInstance = set.getNumOfInputsPerInstance();
@@ -240,7 +241,7 @@ public:
         return (float)cont / (float)numOfInstances;
     }
 
-    // saves the network to a txt file
+    /// saves the network to a txt file
     void saveToTxt(const char * s) const {
         FILE * f;
         f = fopen(s, "w");
@@ -256,34 +257,23 @@ public:
         fclose(f);
     }
 
-    const int * getLayersSize() const {
+    const auto * getLayersSize() const {
         return &layersSize[0];
     }
 
-    int getNumOfLayers() const {
+    auto getNumOfLayers() const {
         return numOfLayers;
     }
-
-    int getNumOfWeights() const {
+    auto getNumOfWeights() const {
         return numOfWeights;
     }
 
-    float * getWeights() {
+    auto * getWeights() {
         return &weights[0];
     }
 
-
-
-    const int * getActFuncts() const {
+    const auto * getActFuncts() const {
         return &actFuncts[0];
-    }
-
-    float getWeight(int ind) const {
-        return weights[ind];
-    }
-
-    void setWeight(int ind, float weight) {
-        weights[ind] = weight;
     }
     
 

@@ -3,20 +3,10 @@ libcudann
 Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 */
 
-/*
- * CudaErrorFunctions.cuh
- *
- *  Created on: Jan 10, 2011
- *      Author: donati
- */
-
-#ifndef CUDAERRORFUNCTIONS_H_
-#define CUDAERRORFUNCTIONS_H_
-
-#define ERROR_LINEAR 0
-#define ERROR_TANH 1
+#pragma once
 
 #include "CudaActivationFunctions.cuh"
+#include "ErrorFunctions.h"
 
 //this macro computes the new error after the application of a function (tanh is more aggressive error targeting)
 #define calcErr(error,errorFunc)(\
@@ -35,5 +25,3 @@ void computeMaxes(const int nOfInst, const int nOfOut, const float * neurons, in
 void addMomentum(float * weights, float * oldWeights,const int number, const float momentum);
 //translate a matrix x-y (rows large (x) and columns high (y)) to one y-x
 void translateMatrix(const int x, const int y, const float * in, float * out);
-
-#endif /* CUDAERRORFUNCTION_H_ */

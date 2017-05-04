@@ -83,12 +83,12 @@ int main(){
     LearningSet trainingSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\parity13.train)");
     LearningSet testSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\parity13.test)");
     std::vector<int> layers = { 13,300,200,1 };
-    std::vector<int> functs = { 2,3,2,1 };
+    std::vector<int> functs = { ACT_TANH, ACT_RELU, ACT_TANH, ACT_SIGMOID };
 
     //LearningSet trainingSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\xor.train)");
     //LearningSet testSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\xor.train)");
     //std::vector<int> layers = { 2,8,4,1 };
-    //std::vector<int> functs = { 3,3,3,1 };
+    //std::vector<int> functs = { ACT_RELU, ACT_RELU, ACT_RELU, ACT_SIGMOID };
 
 
     //LearningSet trainingSet(R"(C:\Users\Luca\Desktop\libcudann.build\mushroom.train)");

@@ -11,34 +11,33 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 #include <csignal>
 #include <vector>
 
+#include "RandomGenerator.h"
+
 #include "FeedForwardNN.h"
 #include "LearningSet.h"
 #include "ErrorFunctions.h"
+
 #ifdef USE_CUDA
 #include "CudaActivationFunctions.cuh"
 #include "CudaErrorFunctions.cuh"
-#endif
 
-#include "RandomGenerator.h"
-
-#ifdef USE_CUDA
 #include <cublas.h>
 //#include <cutil_inline.h>
 #endif
 
 
-#define TRAIN_CPU 0
+const int TRAIN_CPU = 0;
 #ifdef USE_CUDA
-#define TRAIN_GPU 1
+const int TRAIN_GPU = 1;
 #endif
-#define ALG_BP 0
-#define ALG_BATCH 1
-#define SHUFFLE_OFF 0
-#define SHUFFLE_ON 1
+const int ALG_BP    = 0;
+const int ALG_BATCH = 1;
+const int SHUFFLE_OFF = 0;
+const int SHUFFLE_ON  = 1;
 
-#define PRINT_ALL 0
-#define PRINT_MIN 1
-#define PRINT_OFF 2
+const int PRINT_ALL = 0;
+const int PRINT_MIN = 1;
+const int PRINT_OFF = 2;
 
 class FeedForwardNNTrainer {
 public:
@@ -54,27 +53,22 @@ public:
     void selectNet(FeedForwardNN & n) {
         net = &n;
     }
-
     ///choose the training set
     void selectTrainingSet(LearningSet & s) {
         trainingSet = &s;
     }
-
     ///choose the test set. if this is set the error rate is computed on test set instead of training set
     void selectTestSet(LearningSet & s) {
         testSet = &s;
     }
-
     ///choose a net to save the best network trained so far after each epoch. mse on test set is the criterion
     void selectBestMSETestNet(FeedForwardNN & n) {
         bestMSETestNet = &n;
     }
-
     ///choose a net to save the best network trained so far after each epoch. mse on train set + mse on test set is the criterion
     void selectBestMSETrainTestNet(FeedForwardNN & n) {
         bestMSETrainTestNet = &n;
     }
-
     ///choose a net to save the best network trained so far after each epoch. percentage as classifier is the criterion
     void selectBestClassTestNet(FeedForwardNN & n) {
         bestClassTestNet = &n;

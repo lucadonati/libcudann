@@ -13,7 +13,11 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 #define BLOCKSIZE 512
 #define WARP_SIZE 32
 
-
+//macro for the span size of the function (for error calculation of backpropagation)
+#define spanS(act)(\
+    act == ACT_TANH ? 2:\
+    1\
+)
 
 __global__ void error(float * c, const float * a, const float * b, const int number, const int actFunc, const int errorFunc){
     //global thread index

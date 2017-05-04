@@ -5,6 +5,7 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 
 #pragma once
 
+
 #include <vector>
 
 class LearningSet {
@@ -54,38 +55,33 @@ public:
         else { printf("COULDN'T OPEN THE LEARNING SET FILE\n"); exit(1); }
     }
     
-
-    float * getInputs() {
-        return &inputs[0];
-    }
-
-    const float * getInputs() const {
-        return &inputs[0];
-    }
-
-    int getNumOfInputsPerInstance() const {
+    auto getNumOfInputsPerInstance() const {
         return numOfInputsPerInstance;
     }
-
-    int getNumOfInstances() const {
+    auto getNumOfInstances() const {
         return numOfInstances;
     }
-
-    int getNumOfOutputsPerInstance() const {
+    auto getNumOfOutputsPerInstance() const {
         return numOfOutputsPerInstance;
     }
 
-
-    float * getOutputs() {
+    auto * getInputs() {
+        return &inputs[0];
+    }
+    const auto * getInputs() const {
+        return &inputs[0];
+    }
+    auto * getOutputs() {
+        return &outputs[0];
+    }
+    const auto * getOutputs() const {
         return &outputs[0];
     }
 
-
-    const float * get_input_n(int n) const {
+    const auto * get_input_n(int n) const {
         return &inputs[0] + n * numOfInputsPerInstance;
     }
-
-    const float * get_output_n(int n) const {
+    const auto * get_output_n(int n) const {
         return &outputs[0] + n * numOfOutputsPerInstance;
     }
 
