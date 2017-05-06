@@ -6,11 +6,15 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 #pragma once
 
 
+#include <cassert>
 #include <vector>
 #include <fstream>
+#include <sstream>
+
 #include <random>
 #include <algorithm>
 
+#include <string>
 
 class LearningSet {
 public:
@@ -38,37 +42,102 @@ public:
      /// .
      ///
      /// spaces or \n do not matter
-    LearningSet(const char * s) {
+    static LearningSet readFannSet(const char * s) {
+        LearningSet set;
         std::ifstream ifs(s);
         //file not found
         if (!ifs)
-            throw std::runtime_error(std::string("Couldn't open the learning set file: ") + s);
+            throw std::runtime_error(std::string("Couldn't open the Fann learning set file: ") + s);
         auto check_bad_format = [&]() {
             if (!ifs)
-                throw std::runtime_error(std::string("Wrong learning set file format: ") + s);
+                throw std::runtime_error(std::string("Wrong Fann learning set file format: ") + s);
         };
         // check for wrong file format
-        ifs >> numOfInstances;
+        ifs >> set.numOfInstances;
         check_bad_format();
-        ifs >> numOfInputsPerInstance;
+        ifs >> set.numOfInputsPerInstance;
         check_bad_format();
-        ifs >> numOfOutputsPerInstance;
+        ifs >> set.numOfOutputsPerInstance;
         check_bad_format();
 
-        inputs.resize(numOfInstances*numOfInputsPerInstance);
-        outputs.resize(numOfInstances*numOfOutputsPerInstance);
-        for (int i = 0; i<numOfInstances; i++) {
-            for (int j = 0; j < numOfInputsPerInstance; j++) {
-                ifs >> inputs[i*numOfInputsPerInstance + j];
+        set.inputs.resize(set.numOfInstances*set.numOfInputsPerInstance);
+        set.outputs.resize(set.numOfInstances*set.numOfOutputsPerInstance);
+        for (int i = 0; i<set.numOfInstances; i++) {
+            for (int j = 0; j < set.numOfInputsPerInstance; j++) {
+                ifs >> set.inputs[i*set.numOfInputsPerInstance + j];
                 check_bad_format();
             }
-            for (int j = 0; j < numOfOutputsPerInstance; j++) {
-                ifs >> outputs[i*numOfOutputsPerInstance + j];
+            for (int j = 0; j < set.numOfOutputsPerInstance; j++) {
+                ifs >> set.outputs[i*set.numOfOutputsPerInstance + j];
                 check_bad_format();
             }
         }
+        return set;
     }
- 
+
+    /// constructor from txt file (simplified format)
+    /// format is:
+    ///
+    /// INPUT1 INPUT2 INPUT3 ...
+    /// OUTPUT1 OUTPUT2 OUTPUT3 ...
+    ///
+    /// INPUT1 INPUT2 INPUT3 ...
+    /// OUTPUT1 OUTPUT2 OUTPUT3 ...
+    ///
+    /// INPUT1 INPUT2 INPUT3 ...
+    /// OUTPUT1 OUTPUT2 OUTPUT3 ...
+    ///
+    /// .
+    /// .
+    /// .
+    ///
+    /// spaces do not matter. each line must end with \n. empty lines are fine
+    static LearningSet readSimplifiedSet(const char * s) {
+        LearningSet set;
+        std::ifstream ifs(s);
+        //file not found
+        if (!ifs)
+            throw std::runtime_error(std::string("Couldn't open the Fann learning set file: ") + s);
+        auto check_bad_format = [&]() {
+            if (!ifs)
+                throw std::runtime_error(std::string("Wrong Fann learning set file format: ") + s);
+        };
+        
+        bool in = true;
+        int totlines = 0;
+        std::string line;
+        while (std::getline(ifs, line)) {
+            std::istringstream iss(line);
+            while (iss) {
+                float tmp = 0.0;
+                iss >> tmp;
+                if (iss.fail())
+                    break;
+                if(in)
+                    set.inputs.push_back(tmp);
+                else
+                    set.outputs.push_back(tmp);
+            }
+            in = !in;
+            ++totlines;
+        }
+        
+        set.numOfInstances = totlines / 2;
+
+        if (totlines % 2 == 1)
+            throw std::runtime_error("Odd number of lines");
+
+        set.numOfInputsPerInstance = int(set.inputs.size()) / set.numOfInstances;
+        if (int(set.inputs.size() % set.numOfInstances) != 0)
+            throw std::runtime_error("Wrong number of inputs");
+
+        set.numOfOutputsPerInstance = int(set.outputs.size()) / set.numOfInstances;
+        if (int(set.outputs.size() % set.numOfInstances) != 0)
+            throw std::runtime_error("Wrong number of outputs");
+        
+        return set;
+    }
+
     auto getNumOfInstances() const {
         return numOfInstances;
     }
@@ -136,6 +205,16 @@ public:
             sh.outputs.insert(sh.outputs.end(), off_out, off_out + numOfOutputsPerInstance);
         }
         return sh;
+    }
+    
+    void insert(const LearningSet & set) {
+        assert(numOfInputsPerInstance == set.numOfInputsPerInstance);
+        assert(numOfOutputsPerInstance == set.numOfOutputsPerInstance);
+
+        inputs.insert(inputs.end(), set.inputs.begin(), set.inputs.end());
+        outputs.insert(outputs.end(), set.outputs.begin(), set.outputs.end());
+
+        numOfInstances += set.numOfInstances;
     }
 
 private:

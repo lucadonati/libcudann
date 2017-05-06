@@ -80,8 +80,8 @@ void test_all(const FeedForwardNN & mynet, const LearningSet & testSet) {
 int main(){
 
     //TRAINING EXAMPLE
-    LearningSet trainingSet(R"(parity13.train)");
-    LearningSet testSet(R"(parity13.test)");
+    auto trainingSet = LearningSet::readSimplifiedSet(R"(parity13.simp)");
+    auto testSet = LearningSet::readFannSet(R"(parity13.test)");
 
     
     trainingSet = trainingSet.shuffle();

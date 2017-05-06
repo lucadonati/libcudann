@@ -8,7 +8,7 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 
 #include <cstdio>
 #include <cstdlib>
-#include <csignal>
+//#include <csignal>
 #include <vector>
 
 #include "RandomGenerator.h"
@@ -134,7 +134,7 @@ public:
         }
 
         //stops checking CTRL-C
-        signal(SIGINT, SIG_DFL);
+        //signal(SIGINT, SIG_DFL);
 }
 
 private:
