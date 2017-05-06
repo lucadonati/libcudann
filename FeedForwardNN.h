@@ -9,6 +9,7 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 #include <cstdio>
 #include <cstdlib>
 #include <cmath>
+#include <fstream>
 
 #include <vector>
 
@@ -61,26 +62,32 @@ public:
     /// spaces or \n do not matter
     ///
     FeedForwardNN(const char * s) {
-        FILE * f;
-        f = fopen(s, "r");
-
-        //file not found
-        if (f != NULL) {
-            //file wrong format
-            if (fscanf(f, "%d", &numOfLayers)<1) { printf("WRONG NETWORK FILE FORMAT\n"); exit(1); }
-            layersSize.resize(numOfLayers);
-            for (int i = 0; i<numOfLayers; i++)
-                if (fscanf(f, "%d", &layersSize[i])<1) { printf("WRONG NETWORK FILE FORMAT\n"); exit(1); }
-            actFuncts.resize(numOfLayers);
-            for (int i = 0; i<numOfLayers; i++)
-                if (fscanf(f, "%d", &actFuncts[i])<1) { printf("WRONG NETWORK FILE FORMAT\n"); exit(1); }
-            if (fscanf(f, "%d", &numOfWeights)<1) { printf("WRONG NETWORK FILE FORMAT\n"); exit(1); }
-            weights.resize(numOfWeights);
-            for (int i = 0; i<numOfWeights; i++)
-                if (fscanf(f, "%f", &weights[i])<1) { printf("WRONG NETWORK FILE FORMAT\n"); exit(1); }
-            fclose(f);
+        std::ifstream ifs(s);
+        if (!ifs)
+            throw std::runtime_error(std::string("Couldn't open the network file: ") + s);
+        auto check_bad_format = [&]() {
+            if (!ifs)
+                throw std::runtime_error(std::string("Wrong network file format: ") + s);
+        };
+        ifs >> numOfLayers;
+        check_bad_format();
+        layersSize.resize(numOfLayers);
+        for (int i = 0; i < numOfLayers; i++) {
+            ifs >> layersSize[i];
+            check_bad_format();
         }
-        else { printf("COULDN'T OPEN THE NETWORK FILE\n"); exit(1); }
+        actFuncts.resize(numOfLayers);
+        for (int i = 0; i < numOfLayers; i++) {
+            ifs >> actFuncts[i];
+            check_bad_format();
+        }
+        ifs >> numOfWeights;
+        check_bad_format();
+        weights.resize(numOfWeights);
+        for (int i = 0; i < numOfWeights; i++) {
+            ifs >> weights[i];
+            check_bad_format();
+        }
     }
 
     /// initialize randomly the network weights between min and max
@@ -243,18 +250,25 @@ public:
 
     /// saves the network to a txt file
     void saveToTxt(const char * s) const {
-        FILE * f;
-        f = fopen(s, "w");
-        fprintf(f, "%d\n", numOfLayers);
+        std::ofstream ofs(s);
+        if (!ofs)
+            throw std::runtime_error(std::string("Failed to open file ") + s + " for saving network.");
+        ofs << numOfLayers << "\n";
         for (int i = 0; i<numOfLayers; i++)
-            fprintf(f, "%d ", layersSize[i]);
-        fprintf(f, "\n");
+            ofs << layersSize[i];
+        ofs << "\n";
+
         for (int i = 0; i<numOfLayers; i++)
-            fprintf(f, "%d ", actFuncts[i]);
-        fprintf(f, "\n%d\n", numOfWeights);
+            ofs << actFuncts[i];
+        ofs << "\n";
+        ofs << numOfWeights << "\n";
+
+        ofs.precision(20);
+        ofs << std::scientific;
         for (int i = 0; i<numOfWeights; i++)
-            fprintf(f, "%.20e\n", weights[i]);
-        fclose(f);
+            ofs << weights[i];
+        if (!ofs)
+            throw std::runtime_error(std::string("Error occourred while saving network ") + s);
     }
 
     const auto * getLayersSize() const {

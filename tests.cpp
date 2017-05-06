@@ -3,7 +3,7 @@ libcudann
 Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 */
 
-#define USE_CUDA
+#define DISABLE_CUDA_NN
 
 #include <cstdio>
 #include <iostream>
@@ -80,10 +80,19 @@ void test_all(const FeedForwardNN & mynet, const LearningSet & testSet) {
 int main(){
 
     //TRAINING EXAMPLE
-    LearningSet trainingSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\parity13.train)");
-    LearningSet testSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\parity13.test)");
+    LearningSet trainingSet(R"(parity13.train)");
+    LearningSet testSet(R"(parity13.test)");
+
+    
+    trainingSet = trainingSet.shuffle();
+
+    int tot = 0;
+    testSet = trainingSet.filter_set_by([&](auto && n, auto && i, auto && o) {return tot++ > 4000; });
+    tot = 0;
+    trainingSet = trainingSet.filter_set_by([&](auto && n, auto && i, auto && o) {return tot++ < 4000; });
+
     std::vector<int> layers = { 13,300,200,1 };
-    std::vector<int> functs = { ACT_TANH, ACT_RELU, ACT_TANH, ACT_SIGMOID };
+    std::vector<int> functs = { ACT_RELU, ACT_RELU, ACT_RELU, ACT_SIGMOID };
 
     //LearningSet trainingSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\xor.train)");
     //LearningSet testSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\xor.train)");
@@ -135,16 +144,17 @@ int main(){
     //error computation ERROR_LINEAR - ERROR_TANH
     
    // mynet.initWidrowNguyen(trainingSet);
-    float param[]={TRAIN_GPU,ALG_BATCH,0.00, 2120,10,0.0001,0.7,SHUFFLE_ON,ERROR_LINEAR };
+    float param[]={TRAIN_CPU,ALG_BATCH,0.00, 2120,10,0.0001,0.7,SHUFFLE_ON,ERROR_LINEAR };
+    //float param[] = { TRAIN_GPU,ALG_BATCH,0.00, 2120,10,0.0001,0.7,SHUFFLE_ON,ERROR_LINEAR };
     //float param[] = { TRAIN_CPU,ALG_BP,0.00,20,4,0.1,0,SHUFFLE_ON,ERROR_TANH };
     trainer.train(9,param);
      
     
-    mynet.saveToTxt("../mynetmushrooms.net");
+    mynet.saveToTxt("mynetmushrooms.net");
     
     //mseT.saveToTxt("../mseTmushrooms.net");
     //mseTT.saveToTxt("../mseTTmushrooms.net");
-    cl.saveToTxt("../clmushrooms.net");
+    cl.saveToTxt("clmushrooms.net");
     std::cout << "saved" << "\n";
 
     test_classification(cl, testSet);

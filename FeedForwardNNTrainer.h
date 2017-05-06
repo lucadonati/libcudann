@@ -17,7 +17,7 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 #include "LearningSet.h"
 #include "ErrorFunctions.h"
 
-#ifdef USE_CUDA
+#ifndef DISABLE_CUDA_NN
 #include "CudaActivationFunctions.cuh"
 #include "CudaErrorFunctions.cuh"
 
@@ -27,7 +27,7 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 
 
 const int TRAIN_CPU = 0;
-#ifdef USE_CUDA
+#ifndef DISABLE_CUDA_NN
 const int TRAIN_GPU = 1;
 #endif
 const int ALG_BP    = 0;
@@ -614,7 +614,7 @@ private:
 
     }
 
-#ifdef USE_CUDA
+#ifndef DISABLE_CUDA_NN
     ///batch training on device
     ///n is the number of parameters. parameters are (float array):
     ///desired error, max_epochs, epochs_between_reports, learning_rate, momentum (using momentum is 20% slower), shuffle (SHUFFLE_ON or SHUFFLE_OFF), error function (ERROR_TANH or ERROR_LINEAR)void FeedForwardNNTrainer::trainCpuBatch(const int n, const float * params){
@@ -1157,7 +1157,7 @@ private:
 
     }
 
-#ifdef USE_CUDA
+#ifndef DISABLE_CUDA_NN
     ///GPU computes all the instances forward of the backpropagation training
     void GPUForward(
         float * devValues, const  float * devWeights,

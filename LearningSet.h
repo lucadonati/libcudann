@@ -7,9 +7,14 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 
 
 #include <vector>
+#include <fstream>
+#include <random>
+#include <algorithm>
+
 
 class LearningSet {
 public:
+
     LearningSet() {}
 
      /// constructor from txt file (.fann format)
@@ -34,32 +39,41 @@ public:
      ///
      /// spaces or \n do not matter
     LearningSet(const char * s) {
-        FILE * f;
-        f = fopen(s, "r");
+        std::ifstream ifs(s);
         //file not found
-        if (f != NULL) {
-            //file wrong format
-            if (fscanf(f, "%d", &numOfInstances)<1) { printf("WRONG LEARNING SET FILE FORMAT\n"); exit(1); }
-            if (fscanf(f, "%d", &numOfInputsPerInstance)<1) { printf("WRONG LEARNING SET FILE FORMAT\n"); exit(1); }
-            if (fscanf(f, "%d", &numOfOutputsPerInstance)<1) { printf("WRONG LEARNING SET FILE FORMAT\n"); exit(1); }
-            inputs.resize(numOfInstances*numOfInputsPerInstance);
-            outputs.resize(numOfInstances*numOfOutputsPerInstance);
-            for (int i = 0; i<numOfInstances; i++) {
-                for (int j = 0; j<numOfInputsPerInstance; j++)
-                    if (fscanf(f, "%f", &inputs[i*numOfInputsPerInstance + j])<1) { printf("WRONG LEARNING SET FILE FORMAT\n"); exit(1); }
-                for (int j = 0; j<numOfOutputsPerInstance; j++)
-                    if (fscanf(f, "%f", &outputs[i*numOfOutputsPerInstance + j])<1) { printf("WRONG LEARNING SET FILE FORMAT\n"); exit(1); }
+        if (!ifs)
+            throw std::runtime_error(std::string("Couldn't open the learning set file: ") + s);
+        auto check_bad_format = [&]() {
+            if (!ifs)
+                throw std::runtime_error(std::string("Wrong learning set file format: ") + s);
+        };
+        // check for wrong file format
+        ifs >> numOfInstances;
+        check_bad_format();
+        ifs >> numOfInputsPerInstance;
+        check_bad_format();
+        ifs >> numOfOutputsPerInstance;
+        check_bad_format();
+
+        inputs.resize(numOfInstances*numOfInputsPerInstance);
+        outputs.resize(numOfInstances*numOfOutputsPerInstance);
+        for (int i = 0; i<numOfInstances; i++) {
+            for (int j = 0; j < numOfInputsPerInstance; j++) {
+                ifs >> inputs[i*numOfInputsPerInstance + j];
+                check_bad_format();
             }
-            fclose(f);
+            for (int j = 0; j < numOfOutputsPerInstance; j++) {
+                ifs >> outputs[i*numOfOutputsPerInstance + j];
+                check_bad_format();
+            }
         }
-        else { printf("COULDN'T OPEN THE LEARNING SET FILE\n"); exit(1); }
     }
-    
-    auto getNumOfInputsPerInstance() const {
-        return numOfInputsPerInstance;
-    }
+ 
     auto getNumOfInstances() const {
         return numOfInstances;
+    }
+    auto getNumOfInputsPerInstance() const {
+        return numOfInputsPerInstance;
     }
     auto getNumOfOutputsPerInstance() const {
         return numOfOutputsPerInstance;
@@ -85,6 +99,45 @@ public:
         return &outputs[0] + n * numOfOutputsPerInstance;
     }
 
+    template <typename P>
+    LearningSet filter_set_by(P predicate) {
+        LearningSet filtered;
+        filtered.numOfInputsPerInstance = getNumOfInputsPerInstance();
+        filtered.numOfOutputsPerInstance = getNumOfOutputsPerInstance();
+        for (int i = 0; i < numOfInstances; ++i) {
+            if (predicate(i, get_input_n(i), get_output_n(i))) {
+                filtered.inputs.insert(filtered.inputs.end(), get_input_n(i), get_input_n(i) + filtered.numOfInputsPerInstance);
+                filtered.outputs.insert(filtered.outputs.end(), get_output_n(i), get_output_n(i) + filtered.numOfOutputsPerInstance);
+                ++filtered.numOfInstances;
+            }
+        }
+        return filtered;
+    }
+
+    LearningSet shuffle() {
+        LearningSet sh;
+        sh.numOfInstances = numOfInstances;
+        sh.numOfInputsPerInstance = numOfInputsPerInstance;
+        sh.numOfOutputsPerInstance = numOfOutputsPerInstance;
+        
+
+        std::vector<int> indexes;
+        for (int i = 0; i < numOfInstances; ++i)
+            indexes.emplace_back(i);
+
+        thread_local std::random_device rd;
+        thread_local std::mt19937 g(rd());
+        std::shuffle(std::begin(indexes), std::end(indexes), g);
+
+        for (int i = 0; i < numOfInstances; ++i) {
+            auto off_in = get_input_n(indexes[i]);
+            auto off_out = get_output_n(indexes[i]);
+            sh.inputs.insert(sh.inputs.end(), off_in, off_in + numOfInputsPerInstance);
+            sh.outputs.insert(sh.outputs.end(), off_out, off_out + numOfOutputsPerInstance);
+        }
+        return sh;
+    }
+
 private:
     int numOfInstances = 0;
     int numOfInputsPerInstance = 0;
@@ -93,3 +146,8 @@ private:
     std::vector<float> inputs;
     std::vector<float> outputs;
 };
+
+
+
+
+
