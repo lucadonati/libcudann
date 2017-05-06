@@ -16,6 +16,7 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 
 #include <string>
 
+
 class LearningSet {
 public:
 
@@ -74,7 +75,12 @@ public:
         }
         return set;
     }
+    void writeFannSet(const char * s) {
+        std::ofstream ofs(s);
+        ofs << numOfInstances << " " << numOfInputsPerInstance << " " << numOfOutputsPerInstance << "\n";
 
+        write_instances_to_ofs(ofs);
+    }
     /// constructor from txt file (simplified format)
     /// format is:
     ///
@@ -137,7 +143,59 @@ public:
         
         return set;
     }
+    void writeSimplifiedSet(const char * s) {
+        std::ofstream ofs(s);
 
+        write_instances_to_ofs(ofs);
+    }
+
+    static LearningSet readBinarySet(const char * s) {
+        LearningSet set;
+        std::ifstream ifs(s, std::ofstream::binary);
+
+        auto bin_read = [] (auto && s, auto && t) {
+            s.read(reinterpret_cast<char*>(&t), sizeof(t));
+        };
+
+        bin_read(ifs, set.numOfInstances);
+        bin_read(ifs, set.numOfInputsPerInstance);
+        bin_read(ifs, set.numOfOutputsPerInstance);
+
+        set.inputs.resize(set.numOfInstances * set.numOfInputsPerInstance);
+        set.outputs.resize(set.numOfInstances * set.numOfOutputsPerInstance);
+
+        int i_ind = 0;
+        int o_ind = 0;
+        for (int n = 0; n < set.numOfInstances; ++n) {
+            for (int i = 0; i < set.numOfInputsPerInstance; ++i)
+                bin_read(ifs, set.inputs[i_ind++]);
+
+            for (int i = 0; i < set.numOfOutputsPerInstance; ++i)
+                bin_read(ifs, set.outputs[o_ind++]);
+        }
+        return set;
+    }
+    void writeBinarySet(const char * s) {
+        std::ofstream ofs(s, std::ofstream::binary);
+
+        auto bin_write = [](auto && s, auto && t) {
+            s.write(reinterpret_cast<char*>(&t), sizeof(t));
+        };
+
+        bin_write(ofs, numOfInstances);
+        bin_write(ofs, numOfInputsPerInstance);
+        bin_write(ofs, numOfOutputsPerInstance);
+
+        int i_ind = 0;
+        int o_ind = 0;
+        for (int n = 0; n < numOfInstances; ++n) {
+            for (int i = 0; i < numOfInputsPerInstance; ++i)
+                bin_write(ofs, inputs[i_ind++]);
+            
+            for (int i = 0; i < numOfOutputsPerInstance; ++i)
+                bin_write(ofs, outputs[o_ind++]);
+        }
+    }
     auto getNumOfInstances() const {
         return numOfInstances;
     }
@@ -218,6 +276,21 @@ public:
     }
 
 private:
+    template<typename OFS>
+    void write_instances_to_ofs(OFS && ofs) {
+        int i_ind = 0;
+        int o_ind = 0;
+        for (int n = 0; n < numOfInstances; ++n) {
+
+            for (int i = 0; i < numOfInputsPerInstance; ++i)
+                ofs << inputs[i_ind++] << " ";
+            ofs << "\n";
+
+            for (int i = 0; i < numOfOutputsPerInstance; ++i)
+                ofs << outputs[o_ind++] << " ";
+            ofs << "\n";
+        }
+    }
     int numOfInstances = 0;
     int numOfInputsPerInstance = 0;
     int numOfOutputsPerInstance = 0;

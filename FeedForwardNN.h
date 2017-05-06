@@ -219,7 +219,7 @@ public:
     /// returns the index of the most high output neuron (classification)
     int classificate(const float * inputs) const {
         int outputsSize = layersSize[numOfLayers - 1];
-        float max = -10000;
+        float max = std::numeric_limits<float>::min();
         int indmax = 0;
         std::vector<float> outputs(outputsSize);
 

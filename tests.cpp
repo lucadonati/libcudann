@@ -81,6 +81,9 @@ int main(){
 
     //TRAINING EXAMPLE
     auto trainingSet = LearningSet::readSimplifiedSet(R"(parity13.simp)");
+    trainingSet.writeBinarySet("parity.bin");
+    auto asd = LearningSet::readBinarySet("parity.bin");
+    asd.writeFannSet("ole.fann");
     auto testSet = LearningSet::readFannSet(R"(parity13.test)");
 
     
