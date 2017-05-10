@@ -39,6 +39,48 @@ const int PRINT_ALL = 0;
 const int PRINT_MIN = 1;
 const int PRINT_OFF = 2;
 
+
+struct TrainingParameters {
+    int training_location = TRAIN_CPU;
+    int training_algorithm = ALG_BATCH;
+
+    float desired_error = 0.0;
+    int max_epochs = 10000;
+    int epochs_between_reports = 100;
+    float learningRate = 0.001;
+    float momentum = 0.7;
+
+    int shuff = SHUFFLE_ON;
+    int errorFunc = ERROR_LINEAR;
+};
+
+inline void print_parameters(const TrainingParameters & params) {
+    std::cout << "Training on:\t\t";
+    if(params.training_location == TRAIN_CPU)
+        std::cout << "CPU\n";
+    else
+        std::cout << "GPU\n";
+    std::cout << "Algorithm:\t\t";
+    if (params.training_location == ALG_BP)
+        std::cout << "Backpropagation\n";
+    else
+        std::cout << "Batch\n";
+    std::cout << "Desired Error:\t\t" << params.desired_error << "\n";
+    std::cout << "Max epochs:\t\t" << params.max_epochs << "\n";
+    std::cout << "Epochs between reports:\t" << params.epochs_between_reports << "\n";
+    std::cout << "Learning rate:\t\t" << params.learningRate << "\n";
+    std::cout << "Momentum:\t\t" << params.momentum << "\n";
+    if (params.shuff == SHUFFLE_ON)
+        std::cout << "Shuffle:\t\tON\n";
+    else
+        std::cout << "Shuffle:\t\tOFF\n";
+    if (params.errorFunc == ERROR_TANH)
+        std::cout << "Error function:\t\tTANH\n";
+    else
+        std::cout << "Error function:\t\tLINEAR\n";
+    std::cout << "\n";
+}
+
 class FeedForwardNNTrainer {
 public:
 
@@ -79,7 +121,7 @@ public:
     ///and the training algorithm (ALG_BP,ALG_BATCH...). the other parameters are algorithm dependent
     ///returns the best MSE on test set (or train set if test set isn't specified)
     ///printtype specifies how much verbose will be the execution (PRINT_ALL,PRINT_MIN,PRINT_OFF)
-    float train(const int n, const float * params, const int printtype = PRINT_ALL) {
+    float train(const TrainingParameters & params, const int printtype = PRINT_ALL) {
         //checks CTRL-C to interrupt training manually
         quit = false;
        // signal(SIGINT, terminate);
@@ -87,50 +129,49 @@ public:
         setvbuf(stdout, (char*)NULL, _IONBF, 0);
 
         // checks for network and training set correct initialization
-        if (net == NULL) { printf("NEURAL NETWORK NOT SELECTED\n"); exit(1); }
-        if (trainingSet == NULL) { printf("TRAINING SET NOT SELECTED\n"); exit(1); }
+        if (net == nullptr) { throw std::runtime_error("NEURAL NETWORK NOT SELECTED"); }
+        if (trainingSet == nullptr) { throw std::runtime_error("TRAINING SET NOT SELECTED"); }
         if ((trainingSet->getNumOfInputsPerInstance() != net->getLayersSize()[0])
             || (trainingSet->getNumOfOutputsPerInstance() != net->getLayersSize()[net->getNumOfLayers() - 1])) {
-            printf("NETWORK AND TRAINING SET OF DIFFERENT SIZE\n"); exit(1);
+            throw std::runtime_error("NETWORK AND TRAINING SET OF DIFFERENT SIZE");
         }
         if (testSet != NULL &&
             (trainingSet->getNumOfInputsPerInstance() != testSet->getNumOfInputsPerInstance()
                 || trainingSet->getNumOfOutputsPerInstance() != testSet->getNumOfOutputsPerInstance())) {
-            printf("TEST SET OF DIFFERENT SIZE\n"); exit(1);
+            throw std::runtime_error("TEST SET OF DIFFERENT SIZE");
         }
-        if (n<1) { printf("TOO FEW PARAMETERS SELECTED FOR TRAINING\n"); exit(1); }
 
         if (printtype != PRINT_OFF) {
-            printf("Network:\t\t");
-            printf("%d", net->getLayersSize()[0]);
+            std::cout << "Network:\t\t";
+            std::cout << net->getLayersSize()[0];
             for (int i = 1; i<net->getNumOfLayers(); i++)
-                printf("x%d", net->getLayersSize()[i]);
-            printf("\n");
-            printf("Activation functions:\t");
+                std::cout << "x" << net->getLayersSize()[i];
+            std::cout << "\n";
+            std::cout << "Activation functions:\t";
             for (int i = 0; i<net->getNumOfLayers(); i++)
-                printf("%d ", net->getActFuncts()[i]);
-            printf("\n");
+                std::cout << net->getActFuncts()[i] << " ";
+            std::cout << "\n";
         }
 
         //select the right algorithm to execute training
-        switch ((int)params[0]) {
+        switch (params.training_location) {
             case TRAIN_CPU:
-                switch ((int)params[1]) {
-                    case ALG_BP:        return trainCpuBp(n - 2, params + 2, printtype);                    break;
-                    case ALG_BATCH:     return trainCpuBatch(n - 2, params + 2, printtype);                break;
-                    default:            printf("TRAINING NOT IMPLEMENTED YET\n"); exit(1);    break;
+                switch (params.training_algorithm) {
+                    case ALG_BP:        return trainCpuBp(params, printtype);                      break;
+                    case ALG_BATCH:     return trainCpuBatch(params, printtype);                   break;
+                    default:            throw std::runtime_error("TRAINING NOT IMPLEMENTED YET");  break;
                 }
                 break;
-#ifdef USE_CUDA
+#ifndef DISABLE_CUDA_NN
             case TRAIN_GPU:
-                switch ((int)params[1]) {
-                    case ALG_BP:        printf("TRAINING NOT IMPLEMENTED YET\n"); exit(1);    break;
-                    case ALG_BATCH:     return trainGPUBatch(n - 2, params + 2, printtype);        break;
-                    default:            printf("TRAINING NOT IMPLEMENTED YET\n"); exit(1);    break;
+                switch (params.training_algorithm) {
+                    case ALG_BP:        throw std::runtime_error("TRAINING NOT IMPLEMENTED YET");  break;
+                    case ALG_BATCH:     return trainGPUBatch(params, printtype);                   break;
+                    default:            throw std::runtime_error("TRAINING NOT IMPLEMENTED YET");  break;
                 }
                 break;
 #endif
-            default:printf("TRAINING NOT IMPLEMENTED YET\n"); exit(1); break;
+            default: throw std::runtime_error("TRAINING NOT IMPLEMENTED YET");
         }
 
         //stops checking CTRL-C
@@ -141,58 +182,10 @@ private:
     ///backpropagation training on host
     ///n is the number of parameters. parameters are (float array):
     ///desired error, max_epochs, epochs_between_reports, learning_rate, momentum (using momentum is 20% slower), shuffle (SHUFFLE_ON or SHUFFLE_OFF), error function (ERROR_TANH or ERROR_LINEAR)
-    float trainCpuBp(const int n, const float * params, const int printtype) {
-        //parameters parsing
-        float desired_error;
-        int max_epochs;
-        int epochs_between_reports;
-        float learningRate;
-        float momentum;
-        int shuff;
-        int errorFunc;
+    float trainCpuBp(const TrainingParameters & params, const int printtype) {
 
-        if (n<2) { printf("TOO FEW PARAMETERS SELECTED FOR TRAINING\n"); exit(1); }
-        desired_error = params[0];
-        max_epochs = params[1];
-        if (n >= 3)
-            epochs_between_reports = params[2];
-        else
-            epochs_between_reports = max_epochs / 10;
-        if (n >= 4)
-            learningRate = params[3];
-        else
-            learningRate = 0.7;
-        if (n >= 5)
-            momentum = params[4];
-        else
-            momentum = 0;
-        if (n >= 6)
-            shuff = params[5];
-        else
-            shuff = SHUFFLE_ON;
-        if (n >= 7)
-            errorFunc = params[6];
-        else
-            errorFunc = ERROR_TANH;
-
-        if (printtype != PRINT_OFF) {
-            printf("Training on:\t\tCPU\n");
-            printf("Algorithm:\t\tBackpropagation\n");
-            printf("Desired Error:\t\t%f\n", desired_error);
-            printf("Max epochs:\t\t%d\n", max_epochs);
-            printf("Epochs between reports:\t%d\n", epochs_between_reports);
-            printf("Learning rate:\t\t%f\n", learningRate);
-            printf("Momentum:\t\t%f\n", momentum);
-            if (shuff == SHUFFLE_ON)
-                printf("Shuffle:\t\tON\n");
-            else
-                printf("Shuffle:\t\tOFF\n");
-            if (errorFunc == ERROR_TANH)
-                printf("Error function:\t\tTANH\n");
-            else
-                printf("Error function:\t\tLINEAR\n");
-            printf("\n");
-        }
+        if (printtype != PRINT_OFF)
+            print_parameters(params);
 
         float mseTrain = FLT_MAX, mseTest = FLT_MAX;
         //declare some error values for evaluating the trained network and storing best results
@@ -204,7 +197,7 @@ private:
         int numOfLayers = net->getNumOfLayers();
         int numOfWeights = net->getNumOfWeights();
         int numOfNeurons = 0;
-        for (int i = 0; i<net->getNumOfLayers(); i++) {
+        for (int i = 0; i < net->getNumOfLayers(); i++) {
             numOfNeurons += net->getLayersSize()[i] + 1;
         }
 
@@ -219,27 +212,24 @@ private:
 
 
         //declare a pointer to the net weights
-        float * weights;
-        weights = net->getWeights();
+        float * weights = net->getWeights();
         //declare a pointer to the net activation functions
-        const int * actFuncts;
-        actFuncts = net->getActFuncts();
+        const int * actFuncts = net->getActFuncts();
         //declare a pointer to the net layers size
-        const int * layersSize;
-        layersSize = net->getLayersSize();
+        const int * layersSize = net->getLayersSize();
 
         //declare some offsets to manage array indexes of each layer 'i'
         std::vector<int> offsetWeights(numOfLayers);
         std::vector<int> offsetIns(numOfLayers);
         std::vector<int> offsetOuts(numOfLayers);
         std::vector<int> offsetDeltas(numOfLayers);
-        for (int i = 0; i<numOfLayers; i++) {
+        for (int i = 0; i < numOfLayers; i++) {
             //calculates the offsets of the arrays
             offsetWeights[i] = 0;
             offsetDeltas[i] = layersSize[0] + 1;
             offsetIns[i] = 0;
             offsetOuts[i] = layersSize[0] + 1;
-            for (int j = 0; j<i; j++) {
+            for (int j = 0; j < i; j++) {
                 offsetWeights[i] += (layersSize[j] + 1)*layersSize[j + 1];
                 offsetIns[i] += layersSize[j] + 1;
                 offsetOuts[i] += layersSize[j + 1] + 1;
@@ -249,7 +239,7 @@ private:
 
 
         //save previous weights to use in momentum calculation
-        for (int w = 0; w<numOfWeights; w++)
+        for (int w = 0; w < numOfWeights; w++)
             oldWeights[w] = weights[w];
 
 
@@ -259,16 +249,14 @@ private:
         int numOfOutputsPerInstance = trainingSet->getNumOfOutputsPerInstance();
 
         //declare a pointer to the training set inputs
-        float * trainingSetInputs;
-        trainingSetInputs = trainingSet->getInputs();
+        float * trainingSetInputs = trainingSet->getInputs();
         //declare a pointer to the training set outputs
-        float * trainingSetOutputs;
-        trainingSetOutputs = trainingSet->getOutputs();
+        float * trainingSetOutputs = trainingSet->getOutputs();
 
 
         //vector to shuffle training set
         std::vector<int> order(numOfInstances);
-        for (int i = 0; i<numOfInstances; i++)
+        for (int i = 0; i < numOfInstances; i++)
             order[i] = i;
 
         if (printtype == PRINT_ALL) {
@@ -281,12 +269,12 @@ private:
         }
 
         //epochs training
-        for (int epoch = 1; epoch <= max_epochs&&quit == false; epoch++) {
+        for (int epoch = 1; epoch <= params.max_epochs && quit == false; epoch++) {
 
             //shuffle instances
             int ind = 0, aux = 0;
-            if (shuff == SHUFFLE_ON)
-                for (int i = 0; i<numOfInstances; i++) {
+            if (params.shuff == SHUFFLE_ON)
+                for (int i = 0; i < numOfInstances; i++) {
                     ind = gen_random_int(i, numOfInstances - 1);
                     aux = order[ind];
                     order[ind] = order[i];
@@ -294,20 +282,20 @@ private:
                 }
 
             //instances training
-            for (int instance = 0; instance<numOfInstances; instance++) {
+            for (int instance = 0; instance < numOfInstances; instance++) {
 
                 //computes a single instance forward of the backpropagation training
                 stepForward(&values[0], weights, actFuncts, numOfLayers, layersSize, numOfInputsPerInstance, trainingSetInputs, &offsetIns[0], &offsetWeights[0], &offsetOuts[0], &order[0], instance);
 
                 //computes a single instance backward of the backpropagation training
-                stepBack(&values[0], weights, &deltas[0], actFuncts, numOfLayers, layersSize, numOfOutputsPerInstance, trainingSetOutputs, &offsetWeights[0], &offsetDeltas[0], &offsetOuts[0], &order[0], instance, errorFunc);
+                stepBack(&values[0], weights, &deltas[0], actFuncts, numOfLayers, layersSize, numOfOutputsPerInstance, trainingSetOutputs, &offsetWeights[0], &offsetDeltas[0], &offsetOuts[0], &order[0], instance, params.errorFunc);
 
                 //update the weights using the deltas
-                weightsUpdate(&values[0], weights, weights, &deltas[0], numOfLayers, layersSize, &offsetIns[0], &offsetWeights[0], &offsetDeltas[0], momentum, &oldWeights[0], learningRate);
+                weightsUpdate(&values[0], weights, weights, &deltas[0], numOfLayers, layersSize, &offsetIns[0], &offsetWeights[0], &offsetDeltas[0], params.momentum, &oldWeights[0], params.learningRate);
 
             }
 
-            if (epochs_between_reports>0 && epoch%epochs_between_reports == 0) {
+            if (params.epochs_between_reports > 0 && epoch % params.epochs_between_reports == 0) {
 
                 mseTrain = net->computeMSE(*trainingSet);
                 if (printtype == PRINT_ALL)
@@ -341,7 +329,7 @@ private:
                         }
                     }
 
-                    if (mseTest <= desired_error) {
+                    if (mseTest <= params.desired_error) {
                         if (printtype == PRINT_ALL)
                             printf("\nDesired error reached on test set.\n");
                         break;
@@ -352,7 +340,7 @@ private:
                 if (printtype == PRINT_ALL)
                     printf("\n");
 
-                if (mseTrain <= desired_error&&testSet == NULL) {
+                if (mseTrain <= params.desired_error&&testSet == NULL) {
                     if (printtype == PRINT_ALL)
                         printf("Desired error reached on training set.\n");
                     break;
@@ -361,7 +349,7 @@ private:
         }
 
         if (printtype == PRINT_ALL)
-            printf("Training complete.\n");
+            std::cout << "Training complete.\n";
         if (testSet != NULL) {
             return bestMSETest;
         }
@@ -372,58 +360,10 @@ private:
     ///batch training on host
     ///n is the number of parameters. parameters are (float array):
     ///desired error, max_epochs, epochs_between_reports, learning_rate, momentum (using momentum is 20% slower), shuffle (SHUFFLE_ON or SHUFFLE_OFF), error function (ERROR_TANH or ERROR_LINEAR)void FeedForwardNNTrainer::trainCpuBatch(const int n, const float * params){
-    float trainCpuBatch(const int n, const float * params, const int printtype) {
-        //parameters parsing
-        float desired_error;
-        int max_epochs;
-        int epochs_between_reports;
-        float learningRate;
-        float momentum;
-        int shuff;
-        int errorFunc;
-
-        if (n<2) { printf("TOO FEW PARAMETERS SELECTED FOR TRAINING\n"); exit(1); }
-        desired_error = params[0];
-        max_epochs = params[1];
-        if (n >= 3)
-            epochs_between_reports = params[2];
-        else
-            epochs_between_reports = max_epochs / 10;
-        if (n >= 4)
-            learningRate = params[3];
-        else
-            learningRate = 0.7;
-        if (n >= 5)
-            momentum = params[4];
-        else
-            momentum = 0;
-        if (n >= 6)
-            shuff = params[5];
-        else
-            shuff = SHUFFLE_ON;
-        if (n >= 7)
-            errorFunc = params[6];
-        else
-            errorFunc = ERROR_TANH;
-
-        if (printtype != PRINT_OFF) {
-            printf("Training on:\t\tCPU\n");
-            printf("Algorithm:\t\tBatch\n");
-            printf("Desired Error:\t\t%f\n", desired_error);
-            printf("Max epochs:\t\t%d\n", max_epochs);
-            printf("Epochs between reports:\t%d\n", epochs_between_reports);
-            printf("Learning rate:\t\t%f\n", learningRate);
-            printf("Momentum:\t\t%f\n", momentum);
-            if (shuff == SHUFFLE_ON)
-                printf("Shuffle:\t\tON\n");
-            else
-                printf("Shuffle:\t\tOFF\n");
-            if (errorFunc == ERROR_TANH)
-                printf("Error function:\t\tTANH\n");
-            else
-                printf("Error function:\t\tLINEAR\n");
-            printf("\n");
-        }
+    float trainCpuBatch(const TrainingParameters & params, const int printtype) {
+        
+        if (printtype != PRINT_OFF)
+            print_parameters(params);
 
         float mseTrain = FLT_MAX, mseTest = FLT_MAX;
         //declare some error values for evaluating the trained network and storing best results
@@ -449,14 +389,11 @@ private:
         std::vector<float> tmpWeights(numOfWeights);
 
         //declare a pointer to the net weights
-        float * weights;
-        weights = net->getWeights();
+        float * weights = net->getWeights();
         //declare a pointer to the net activation functions
-        const int * actFuncts;
-        actFuncts = net->getActFuncts();
+        const int * actFuncts = net->getActFuncts();
         //declare a pointer to the net layers size
-        const int * layersSize;
-        layersSize = net->getLayersSize();
+        const int * layersSize = net->getLayersSize();
 
         //declare some offsets to manage array indexes of each layer 'i'
         std::vector<int> offsetWeights(numOfLayers);
@@ -491,11 +428,9 @@ private:
         int numOfOutputsPerInstance = trainingSet->getNumOfOutputsPerInstance();
 
         //declare a pointer to the training set inputs
-        float * trainingSetInputs;
-        trainingSetInputs = trainingSet->getInputs();
+        float * trainingSetInputs = trainingSet->getInputs();
         //declare a pointer to the training set outputs
-        float * trainingSetOutputs;
-        trainingSetOutputs = trainingSet->getOutputs();
+        float * trainingSetOutputs = trainingSet->getOutputs();
 
 
         //vector to shuffle training set
@@ -513,11 +448,11 @@ private:
         }
 
         //epochs training
-        for (int epoch = 1; epoch <= max_epochs&&quit == false; epoch++) {
+        for (int epoch = 1; epoch <= params.max_epochs && quit == false; epoch++) {
 
             //shuffle instances
             int ind = 0, aux = 0;
-            if (shuff == SHUFFLE_ON)
+            if (params.shuff == SHUFFLE_ON)
                 for (int i = 0; i<numOfInstances; i++) {
                     ind = gen_random_int(i, numOfInstances - 1);
                     aux = order[ind];
@@ -533,11 +468,11 @@ private:
                 stepForward(&values[0], weights, actFuncts, numOfLayers, layersSize, numOfInputsPerInstance, trainingSetInputs, &offsetIns[0], &offsetWeights[0], &offsetOuts[0], &order[0], instance);
 
                 //computes a single instance backward of the backpropagation training
-                stepBack(&values[0], weights, &deltas[0], actFuncts, numOfLayers, layersSize, numOfOutputsPerInstance, trainingSetOutputs, &offsetWeights[0], &offsetDeltas[0], &offsetOuts[0], &order[0], instance, errorFunc);
+                stepBack(&values[0], weights, &deltas[0], actFuncts, numOfLayers, layersSize, numOfOutputsPerInstance, trainingSetOutputs, &offsetWeights[0], &offsetDeltas[0], &offsetOuts[0], &order[0], instance, params.errorFunc);
 
                 //update the weights using the deltas
                 //no momentum is used, it will be added after all the instances
-                weightsUpdate(&values[0], weights, &tmpWeights[0], &deltas[0], numOfLayers, layersSize, &offsetIns[0], &offsetWeights[0], &offsetDeltas[0], 0, &oldWeights[0], learningRate);
+                weightsUpdate(&values[0], weights, &tmpWeights[0], &deltas[0], numOfLayers, layersSize, &offsetIns[0], &offsetWeights[0], &offsetDeltas[0], 0, &oldWeights[0], params.learningRate);
             }
 
 
@@ -546,12 +481,12 @@ private:
             //it also uses momentum
             for (int w = 0; w<numOfWeights; w++) {
                 float auxWeight = weights[w];
-                weights[w] += (tmpWeights[w] / numOfInstances) + momentum*(auxWeight - oldWeights[w]);
+                weights[w] += (tmpWeights[w] / numOfInstances) + params.momentum*(auxWeight - oldWeights[w]);
                 tmpWeights[w] = 0;
                 oldWeights[w] = auxWeight;
             }
 
-            if (epochs_between_reports>0 && epoch%epochs_between_reports == 0) {
+            if (params.epochs_between_reports > 0 && epoch % params.epochs_between_reports == 0) {
 
                 mseTrain = net->computeMSE(*trainingSet);
                 if (printtype == PRINT_ALL)
@@ -585,7 +520,7 @@ private:
                         }
                     }
 
-                    if (mseTest <= desired_error) {
+                    if (mseTest <= params.desired_error) {
                         if (printtype == PRINT_ALL)
                             printf("\nDesired error reached on test set.\n");
                         break;
@@ -596,7 +531,7 @@ private:
                 if (printtype == PRINT_ALL)
                     printf("\n");
 
-                if (mseTrain <= desired_error&&testSet == NULL) {
+                if (mseTrain <= params.desired_error && testSet == NULL) {
                     if (printtype == PRINT_ALL)
                         printf("Desired error reached on training set.\n");
                     break;
@@ -618,58 +553,10 @@ private:
     ///batch training on device
     ///n is the number of parameters. parameters are (float array):
     ///desired error, max_epochs, epochs_between_reports, learning_rate, momentum (using momentum is 20% slower), shuffle (SHUFFLE_ON or SHUFFLE_OFF), error function (ERROR_TANH or ERROR_LINEAR)void FeedForwardNNTrainer::trainCpuBatch(const int n, const float * params){
-    float trainGPUBatch(const int n, const float * params, const int printtype) {
-        //parameters parsing
-        float desired_error;
-        int max_epochs;
-        int epochs_between_reports;
-        float learningRate;
-        float momentum;
-        int shuff;
-        int errorFunc;
+    float trainGPUBatch(const TrainingParameters & params, const int printtype) {
 
-        if (n<2) { printf("TOO FEW PARAMETERS SELECTED FOR TRAINING\n"); exit(1); }
-        desired_error = params[0];
-        max_epochs = params[1];
-        if (n >= 3)
-            epochs_between_reports = params[2];
-        else
-            epochs_between_reports = max_epochs / 10;
-        if (n >= 4)
-            learningRate = params[3];
-        else
-            learningRate = 0.7;
-        if (n >= 5)
-            momentum = params[4];
-        else
-            momentum = 0;
-        if (n >= 6)
-            shuff = params[5];
-        else
-            shuff = SHUFFLE_ON;
-        if (n >= 7)
-            errorFunc = params[6];
-        else
-            errorFunc = ERROR_TANH;
-
-        if (printtype != PRINT_OFF) {
-            printf("Training on:\t\tGPU\n");
-            printf("Algorithm:\t\tBatch\n");
-            printf("Desired Error:\t\t%f\n", desired_error);
-            printf("Max epochs:\t\t%d\n", max_epochs);
-            printf("Epochs between reports:\t%d\n", epochs_between_reports);
-            printf("Learning rate:\t\t%f\n", learningRate);
-            printf("Momentum:\t\t%f\n", momentum);
-            if (shuff == SHUFFLE_ON)
-                printf("Shuffle:\t\tON\n");
-            else
-                printf("Shuffle:\t\tOFF\n");
-            if (errorFunc == ERROR_TANH)
-                printf("Error function:\t\tTANH\n");
-            else
-                printf("Error function:\t\tLINEAR\n");
-            printf("\n");
-        }
+        if (printtype != PRINT_OFF)
+            print_parameters(params);
 
         float mseTrain = FLT_MAX, mseTest = FLT_MAX;
         //declare some error values for evaluating the trained network and storing best results
@@ -710,21 +597,16 @@ private:
         //declare an array of weights to use for momentum
         std::vector<float> oldWeights(numOfWeights);
         //declare a pointer to the net weights
-        float * weights;
-        weights = net->getWeights();
+        float * weights = net->getWeights();
         //declare a pointer to the net activation functions
-        const int * actFuncts;
-        actFuncts = net->getActFuncts();
+        const int * actFuncts = net->getActFuncts();
         //declare a pointer to the net layers size
-        const int * layersSize;
-        layersSize = net->getLayersSize();
+        const int * layersSize = net->getLayersSize();
 
         //declare a pointer to the training set inputs
-        float * trainingSetInputs;
+        float * trainingSetInputs = trainingSet->getInputs();
         //declare a pointer to the training set outputs
-        float * trainingSetOutputs;
-        trainingSetInputs = trainingSet->getInputs();
-        trainingSetOutputs = trainingSet->getOutputs();
+        float * trainingSetOutputs = trainingSet->getOutputs();
 
         //declare a pointer to the test set inputs
         float * testSetInputs = NULL;
@@ -828,29 +710,33 @@ private:
         float * devTestSetInputs = NULL;
         float * devTestSetOutputs = NULL;
 
+        auto testAllocSuccess = [&]() {
+            if (stat != CUBLAS_STATUS_SUCCESS)
+                throw std::runtime_error("device memory allocation failed");
+        };
         //allocates the vectors on the device
         stat = cublasAlloc(numOfNeurons*numOfInstances, sizeof(values[0]), (void**)&devValues);
-        if (stat != CUBLAS_STATUS_SUCCESS) { printf("device memory allocation failed\n"); exit(1); }
+        testAllocSuccess();
         if (testSet != NULL) {
             stat = cublasAlloc(numOfNeurons*numOfTestInstances, sizeof(testValues[0]), (void**)&devTestValues);
-            if (stat != CUBLAS_STATUS_SUCCESS) { printf("device memory allocation failed\n"); exit(1); }
+            testAllocSuccess();
         }
         stat = cublasAlloc(numOfNeurons*numOfInstances, sizeof(deltas[0]), (void**)&devDeltas);
-        if (stat != CUBLAS_STATUS_SUCCESS) { printf("device memory allocation failed\n"); exit(1); }
+        testAllocSuccess();
         stat = cublasAlloc(numOfWeights, sizeof(*weights), (void**)&devWeights);
-        if (stat != CUBLAS_STATUS_SUCCESS) { printf("device memory allocation failed\n"); exit(1); }
+        testAllocSuccess();
         stat = cublasAlloc(numOfWeights, sizeof(oldWeights[0]), (void**)&devOldWeights);
-        if (stat != CUBLAS_STATUS_SUCCESS) { printf("device memory allocation failed\n"); exit(1); }
+        testAllocSuccess();
 
         stat = cublasAlloc(numOfInstances*numOfInputsPerInstance, sizeof(*devTrainingSetInputs), (void**)&devTrainingSetInputs);
-        if (stat != CUBLAS_STATUS_SUCCESS) { printf("device memory allocation failed\n"); exit(1); }
+        testAllocSuccess();
         stat = cublasAlloc(numOfInstances*numOfOutputsPerInstance, sizeof(*devTrainingSetOutputs), (void**)&devTrainingSetOutputs);
-        if (stat != CUBLAS_STATUS_SUCCESS) { printf("device memory allocation failed\n"); exit(1); }
+        testAllocSuccess();
         if (testSet != NULL) {
             stat = cublasAlloc(numOfTestInstances*numOfInputsPerInstance, sizeof(*devTestSetInputs), (void**)&devTestSetInputs);
-            if (stat != CUBLAS_STATUS_SUCCESS) { printf("device memory allocation failed\n"); exit(1); }
+            testAllocSuccess();
             stat = cublasAlloc(numOfTestInstances*numOfOutputsPerInstance, sizeof(*devTestSetOutputs), (void**)&devTestSetOutputs);
-            if (stat != CUBLAS_STATUS_SUCCESS) { printf("device memory allocation failed\n"); exit(1); }
+            testAllocSuccess();
         }
 
         //copies the training set inputs and outputs on the device
@@ -886,73 +772,17 @@ private:
         }
 
         //epochs training
-        for (int epoch = 1; epoch <= max_epochs&&quit == false; epoch++) {
+        for (int epoch = 1; epoch <= params.max_epochs && quit == false; epoch++) {
 
             //shuffle instances
             int ind = 0, aux = 0;
-            if (shuff == SHUFFLE_ON)
+            if (params.shuff == SHUFFLE_ON)
                 for (int i = 0; i<numOfInstances; i++) {
                     ind = gen_random_int(i, numOfInstances - 1);
                     aux = order[ind];
                     order[ind] = order[i];
                     order[i] = aux;
                 }
-
-            //TESTING  MINI BATCHES
-            /*
-            //training
-            int minibdim = 1000000;
-            for(int minib = 0; minib < numOfInstances; minib += minibdim) {
-            int num_mini_instances = minibdim;
-            if (minib + minibdim > numOfInstances)
-            num_mini_instances = numOfInstances - minib;
-
-            std::vector<int> oins = offsetIns;
-            int lay = 0;
-            for (auto && el : oins) {
-            el += minib;// *(layersSize[lay] + 1);/// column major
-            ++lay;
-            }
-
-            lay = 0;
-            std::vector<int> oouts = offsetOuts;
-            for (auto && el : oouts) {
-            // if (lay + 1 < numOfLayers)
-            el += minib;// * (layersSize[lay + 1] + 1);/// dimensione di ciascun layer
-            //else
-            //  el += (layersSize[lay]) * minib;/// dimensione di ciascun layer
-            ++lay;
-            }
-
-            lay = 0;
-            std::vector<int> odeltas = offsetDeltas;
-            for (auto && el : odeltas) {
-            //  if (lay + 1 < numOfLayers)
-            el += minib;// *(layersSize[lay + 1] + 1);/// dimensione di ciascun layer
-            // else
-            //   el += (layersSize[lay]) * minib;/// dimensione di ciascun layer
-            ++lay;
-            }
-
-
-            GPUForward(devValues, devWeights,
-            actFuncts, numOfLayers, layersSize, numOfInstances, num_mini_instances,
-            &oins[0], &offsetWeights[0], &oouts[0]);
-
-            //computes all the instances backward of the backpropagation training
-            GPUBack(devValues, devWeights, devDeltas,
-            actFuncts, numOfLayers, layersSize, numOfInstances, num_mini_instances, numOfOutputsPerInstance,
-            devTrainingSetOutputs + minib, &offsetWeights[0], &odeltas[0], &oouts[0],
-            errorFunc);
-
-            //update the weights using the deltas
-            GPUUpdate(devValues, devWeights, devDeltas,
-            numOfLayers, layersSize, numOfInstances, num_mini_instances,
-            &oins[0], &offsetWeights[0], &odeltas[0],
-            momentum, devOldWeights, learningRate);
-
-            }
-            */
 
             GPUForward(devValues, devWeights,
                 actFuncts, numOfLayers, layersSize, numOfInstances, numOfInstances,
@@ -962,15 +792,15 @@ private:
             GPUBack(devValues, devWeights, devDeltas,
                 actFuncts, numOfLayers, layersSize, numOfInstances, numOfInstances, numOfOutputsPerInstance,
                 devTrainingSetOutputs, &offsetWeights[0], &offsetDeltas[0], &offsetOuts[0],
-                errorFunc);
+                params.errorFunc);
 
             //update the weights using the deltas
             GPUUpdate(devValues, devWeights, devDeltas,
                 numOfLayers, layersSize, numOfInstances, numOfInstances,
                 &offsetIns[0], &offsetWeights[0], &offsetDeltas[0],
-                momentum, devOldWeights, learningRate);
+                params.momentum, devOldWeights, params.learningRate);
 
-            if (epochs_between_reports>0 && epoch%epochs_between_reports == 0) {
+            if (params.epochs_between_reports > 0 && epoch % params.epochs_between_reports == 0) {
 
                 cudaMemcpy(weights, devWeights, numOfWeights * sizeof(float), cudaMemcpyDeviceToHost);
 
@@ -1009,7 +839,7 @@ private:
                         }
                     }
 
-                    if (mseTest <= desired_error) {
+                    if (mseTest <= params.desired_error) {
                         if (printtype == PRINT_ALL)
                             printf("\nDesired error reached on test set.\n");
                         break;
@@ -1020,7 +850,7 @@ private:
                 if (printtype == PRINT_ALL)
                     printf("\n");
 
-                if (mseTrain <= desired_error&&testSet == NULL) {
+                if (mseTrain <= params.desired_error && testSet == NULL) {
                     if (printtype == PRINT_ALL)
                         printf("Desired error reached on training set.\n");
                     break;
@@ -1049,8 +879,8 @@ private:
         if (testSet != NULL) {
             return bestMSETest;
         }
-        else return mseTrain;
-
+        else
+            return mseTrain;
     }
 #endif
 

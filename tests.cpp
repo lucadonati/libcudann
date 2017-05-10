@@ -3,7 +3,7 @@ libcudann
 Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 */
 
-#define DISABLE_CUDA_NN
+//#define DISABLE_CUDA_NN
 
 #include <cstdio>
 #include <iostream>
@@ -12,6 +12,7 @@ Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 #include <cstdlib>
 
 #include <vector>
+#include <list>
 
 //#include "genetics/GAFeedForwardNN.h"
 #include "FeedForwardNN.h"
@@ -78,24 +79,50 @@ void test_all(const FeedForwardNN & mynet, const LearningSet & testSet) {
 }
 
 int main(){
-
+    /*
     //TRAINING EXAMPLE
-    auto trainingSet = LearningSet::readSimplifiedSet(R"(parity13.simp)");
-    trainingSet.writeBinarySet("parity.bin");
-    auto asd = LearningSet::readBinarySet("parity.bin");
-    asd.writeFannSet("ole.fann");
-    auto testSet = LearningSet::readFannSet(R"(parity13.test)");
+    std::string base = R"(C:\Users\Luca\Desktop\adidas_project\trunk\vision_code\feature_extraction.build\)";
 
+    std::vector<LearningSet> sets;
+    sets.push_back(LearningSet::readSimplifiedSet(std::string(base + "bigset-zero.set").c_str()));
+    sets.push_back(LearningSet::readSimplifiedSet(std::string(base + "bigset-one.set").c_str()));
+    sets.push_back(LearningSet::readSimplifiedSet(std::string(base + "bigset-two.set").c_str()));
+    sets.push_back(LearningSet::readSimplifiedSet(std::string(base + "bigset-three.set").c_str()));
+
+    int n = 0;
+    auto trei = [&] (auto&&, auto &&, auto &&) {return n++ < 850; };
+    auto tes = [&](auto&&, auto &&, auto &&) {return !trei(0, nullptr, nullptr); };
+
+    LearningSet tr, te;
+
+    for (int i = 0; i < 4; ++i) {
+        n = 0;
+        auto tre = sets[i].filter_set_by(trei);
+        tr.insert(tre);
+
+        n = 0;
+        auto tess = sets[i].filter_set_by(tes);
+        te.insert(tess);
+    }
+    tr.writeBinarySet("adi_train.set");
+    te.writeBinarySet("adi_test.set");
     
+    
+    std::cout << "ok" << "\n";
+    int s;
+    std::cin >> s;
+    
+    LearningSet trainingSet;
+
     trainingSet = trainingSet.shuffle();
 
     int tot = 0;
-    testSet = trainingSet.filter_set_by([&](auto && n, auto && i, auto && o) {return tot++ > 4000; });
+    auto testSet = trainingSet.filter_set_by([&](auto && n, auto && i, auto && o) {return tot++ > 4000; });
     tot = 0;
     trainingSet = trainingSet.filter_set_by([&](auto && n, auto && i, auto && o) {return tot++ < 4000; });
-
-    std::vector<int> layers = { 13,300,200,1 };
-    std::vector<int> functs = { ACT_RELU, ACT_RELU, ACT_RELU, ACT_SIGMOID };
+    */
+    //std::vector<int> layers = { 13,300,200,1 };
+    //std::vector<int> functs = { ACT_RELU, ACT_RELU, ACT_RELU, ACT_SIGMOID };
 
     //LearningSet trainingSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\xor.train)");
     //LearningSet testSet(R"(C:\Users\Luca\Desktop\cuda-libcuda\xor.train)");
@@ -108,10 +135,20 @@ int main(){
     //std::vector<int> layers={125,100,2};
     //std::vector<int> functs = { 3,3,1 };
 
+    LearningSet trainingSet = LearningSet::readBinarySet("adi_train.set");
+    int n = 0;
+   // trainingSet = trainingSet.shuffle().filter_set_by([&](auto&&, auto &&, auto &&) {return n++ < 400 * 4; });
+    trainingSet = trainingSet.shuffle();
+    LearningSet testSet = LearningSet::readBinarySet("adi_test.set");
+    std::vector<LearningSet> batches;
+    for (int i = 0; i < trainingSet.getNumOfInstances(); i += 200 * 3) {
+        n = 0;
+        batches.push_back(trainingSet.filter_set_by([&] (auto,auto,auto){++n; return n > i && n < i + 600; }));
+    }
     //LearningSet trainingSet(R"(C:\Users\Luca\Desktop\adidas_project\trunk\vision_code\feature_extraction.build\train.set)");
     //LearningSet testSet(R"(C:\Users\Luca\Desktop\adidas_project\trunk\vision_code\feature_extraction.build\train.set)");
-    //std::vector<int> layers = { 200 * 200 * 3, 1000, 1000,1000,1000,4 };
-    //std::vector<int> functs={3,3,3,3,3,1};
+    std::vector<int> layers = { 200 * 200 * 3, 1000, 800,800,500,4 };
+    std::vector<int> functs={3,3,3,3,3,1};
 
     //layer sizes
     //activation functions (1=sigm,2=tanh,3=relu)
@@ -120,7 +157,8 @@ int main(){
     //declare the network with the number of layers
     //FeedForwardNN mynet(3, layers, functs);
     FeedForwardNN mynet(layers.size(),&layers[0],&functs[0]);
-    //mynet.initWeights(-0.001, 0.001);
+    mynet.initWeights(-0.01, 0.01);
+    //mynet.initWidrowNguyen(testSet);
     
     FeedForwardNNTrainer trainer;
     trainer.selectNet(mynet);
@@ -136,22 +174,24 @@ int main(){
     trainer.selectBestClassTestNet(cl);
 
     //parameters:
-    //TRAIN_GPU - TRAIN_CPU
-    //ALG_BATCH - ALG_BP (batch packpropagation or standard)
-    //desired error
-    //total epochs
-    //epochs between reports
-    //learning rate
-    //momentum
-    //SHUFFLE_ON - SHUFFLE_OFF
-    //error computation ERROR_LINEAR - ERROR_TANH
-    
-   // mynet.initWidrowNguyen(trainingSet);
-    float param[]={TRAIN_CPU,ALG_BATCH,0.00, 2120,10,0.0001,0.7,SHUFFLE_ON,ERROR_LINEAR };
-    //float param[] = { TRAIN_GPU,ALG_BATCH,0.00, 2120,10,0.0001,0.7,SHUFFLE_ON,ERROR_LINEAR };
-    //float param[] = { TRAIN_CPU,ALG_BP,0.00,20,4,0.1,0,SHUFFLE_ON,ERROR_TANH };
-    trainer.train(9,param);
-     
+    for(int i=0;i<100;++i)
+        for (auto&& tr1 : batches) {
+            trainer.selectTrainingSet(tr1);
+            // mynet.initWidrowNguyen(trainingSet);
+                
+            TrainingParameters params;
+            params.training_location = TRAIN_GPU;
+            params.training_algorithm = ALG_BATCH;
+            params.desired_error = 0.0;
+            params.max_epochs = 30;
+            params.epochs_between_reports = 30;
+            params.learningRate = 0.001;
+            params.momentum = 0.2;
+            params.shuff = SHUFFLE_ON;
+            params.errorFunc = ERROR_LINEAR;
+        
+            trainer.train(params);
+        }
     
     mynet.saveToTxt("mynetmushrooms.net");
     

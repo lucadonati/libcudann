@@ -266,8 +266,14 @@ public:
     }
     
     void insert(const LearningSet & set) {
+        if (numOfInputsPerInstance == 0)
+            numOfInputsPerInstance = set.numOfInputsPerInstance;
+        if (numOfOutputsPerInstance == 0)
+            numOfOutputsPerInstance = set.numOfOutputsPerInstance;
+
         assert(numOfInputsPerInstance == set.numOfInputsPerInstance);
         assert(numOfOutputsPerInstance == set.numOfOutputsPerInstance);
+
 
         inputs.insert(inputs.end(), set.inputs.begin(), set.inputs.end());
         outputs.insert(outputs.end(), set.outputs.begin(), set.outputs.end());
