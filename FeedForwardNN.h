@@ -290,6 +290,36 @@ public:
         return &actFuncts[0];
     }
     
+    std::vector<int> get_weight_offsets(int scaleFactor = 1) {
+        std::vector<int> offsetWeights(numOfLayers);
+        for (int i = 0; i < numOfLayers; i++) {
+            offsetWeights[i] = 0;
+            for (int j = 0; j < i; j++) {
+                offsetWeights[i] += ((layersSize[j] + 1) * layersSize[j + 1]) * scaleFactor;
+            }
+        }
+        return offsetWeights;
+    }
+    std::vector<int> get_input_offsets(int scaleFactor = 1) {
+        std::vector<int> offsetIns(numOfLayers);
+        for (int i = 0; i < numOfLayers; i++) {
+            offsetIns[i] = 0;
+            for (int j = 0; j < i; j++) {
+                offsetIns[i] += (layersSize[j] + 1) * scaleFactor;
+            }
+        }
+        return offsetIns;
+    }
+    std::vector<int> get_output_offsets(int scaleFactor = 1) {
+        std::vector<int> offsetOuts(numOfLayers);
+        for (int i = 0; i < numOfLayers; i++) {
+            offsetOuts[i] = (layersSize[0] + 1) * scaleFactor;
+            for (int j = 0; j < i; j++) {
+                offsetOuts[i] += (layersSize[j + 1] + 1) * scaleFactor;
+            }
+        }
+        return offsetOuts;
+    }
 
 private:
     int numOfLayers = 0;
