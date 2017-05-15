@@ -80,6 +80,59 @@ void test_all(const FeedForwardNN & mynet, const LearningSet & testSet) {
 
 int main(){
     /*
+    {
+        LearningSet set;
+        //std::ifstream ifs_i(R"(c:\users\luca\desktop\train-images.idx3-ubyte)", std::ofstream::binary);
+        //std::ifstream ifs_o(R"(c:\users\luca\desktop\train-labels.idx1-ubyte)", std::ofstream::binary);
+
+        //std::ofstream ofs(R"(c:\users\luca\desktop\minst.simp_train)");
+
+        std::ifstream ifs_i(R"(c:\users\luca\desktop\t10k-images.idx3-ubyte)", std::ofstream::binary);
+        std::ifstream ifs_o(R"(c:\users\luca\desktop\t10k-labels.idx1-ubyte)", std::ofstream::binary);
+
+        std::ofstream ofs(R"(c:\users\luca\desktop\minst.simp_test)");
+
+        auto bin_read = [](auto && s, auto && t) {
+            s.read(reinterpret_cast<char*>(&t), sizeof(t));
+        };
+
+        bin_read(ifs_i, int32_t());
+        bin_read(ifs_i, int32_t());
+        bin_read(ifs_i, int32_t());
+        bin_read(ifs_i, int32_t());
+
+        bin_read(ifs_o, int32_t());
+        bin_read(ifs_o, int32_t());
+
+        std::vector<uint8_t> data;
+
+        while (true) {
+            data.resize(28 * 28);
+            for (int i = 0; i < 28 * 28; ++i) {
+                bin_read(ifs_i, data[i]);
+            }
+            for (auto && el : data) {
+                ofs << int(el) << " ";
+            }
+            ofs << "\n";
+
+            data.resize(1);
+            for (int i = 0; i < 1; ++i) {
+                bin_read(ifs_o, data[i]);
+            }
+            for (auto && el : data) {
+                ofs << int(el) << " ";
+            }
+            ofs << "\n";
+
+            if (!ifs_i || !ifs_o)
+                break;
+        }
+
+        
+    }
+    */
+    /*
     //TRAINING EXAMPLE
     std::string base = R"(C:\Users\Luca\Desktop\adidas_project\trunk\vision_code\feature_extraction.build\)";
 
@@ -137,18 +190,23 @@ int main(){
 
     LearningSet trainingSet = LearningSet::readBinarySet("adi_train.set");
     int n = 0;
-   // trainingSet = trainingSet.shuffle().filter_set_by([&](auto&&, auto &&, auto &&) {return n++ < 400 * 4; });
-    trainingSet = trainingSet.shuffle();
+    trainingSet = trainingSet.shuffle().filter_set_by([&](auto&&, auto &&, auto &&) {return n++ < 300 * 4; });
+    //trainingSet = trainingSet.shuffle();
     LearningSet testSet = LearningSet::readBinarySet("adi_test.set");
     std::vector<LearningSet> batches;
-    for (int i = 0; i < trainingSet.getNumOfInstances(); i += 200 * 3) {
+    n = 0;
+    //trainingSet = trainingSet.filter_set_by([&](auto, auto, auto) {++n; return n < 400*4; });
+    /*
+    for (int i = 0; i < trainingSet.getNumOfInstances(); i += 300 * 4) {
         n = 0;
-        batches.push_back(trainingSet.filter_set_by([&] (auto,auto,auto){++n; return n > i && n < i + 600; }));
+        batches.push_back(trainingSet.filter_set_by([&] (auto,auto,auto){++n; return n > i && n < i + 1200; }));
     }
+    trainingSet = LearningSet();
+    */
     //LearningSet trainingSet(R"(C:\Users\Luca\Desktop\adidas_project\trunk\vision_code\feature_extraction.build\train.set)");
     //LearningSet testSet(R"(C:\Users\Luca\Desktop\adidas_project\trunk\vision_code\feature_extraction.build\train.set)");
-    std::vector<int> layers = { 200 * 200 * 3, 1000, 800,800,500,4 };
-    std::vector<int> functs={3,3,3,3,3,1};
+    std::vector<int> layers = { 200 * 200 * 3, 500,500,500,500, 500, 500, 500,500,500,500,500,4 };
+    std::vector<int> functs={3,3,3,3,3,3,3,3,3,3,3,3,1};
 
     //layer sizes
     //activation functions (1=sigm,2=tanh,3=relu)
@@ -174,7 +232,7 @@ int main(){
     trainer.selectBestClassTestNet(cl);
 
     //parameters:
-    for(int i=0;i<100;++i)
+   /* for(int i=0;i<100;++i)
         for (auto&& tr1 : batches) {
             trainer.selectTrainingSet(tr1);
             // mynet.initWidrowNguyen(trainingSet);
@@ -186,12 +244,31 @@ int main(){
             params.max_epochs = 30;
             params.epochs_between_reports = 30;
             params.learningRate = 0.001;
-            params.momentum = 0.2;
+            params.momentum = 0.0;
             params.shuff = SHUFFLE_ON;
             params.errorFunc = ERROR_LINEAR;
         
             trainer.train(params);
-        }
+        }*/
+
+    //for (int i = 0; i<100; ++i)
+      //  for (auto&& tr1 : batches) {
+            trainer.selectTrainingSet(trainingSet);
+            // mynet.initWidrowNguyen(trainingSet);
+
+            TrainingParameters params;
+            params.training_location = TRAIN_GPU;
+            params.training_algorithm = ALG_BATCH;
+            params.desired_error = 0.0;
+            params.max_epochs = 3000;
+            params.epochs_between_reports = 10;
+            params.learningRate = 0.1;
+         //   params.momentum = 0.7;
+            params.shuff = SHUFFLE_ON;
+            params.errorFunc = ERROR_LINEAR;
+
+            trainer.train(params);
+     //   }
     
     mynet.saveToTxt("mynetmushrooms.net");
     

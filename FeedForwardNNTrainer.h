@@ -253,7 +253,7 @@ private:
             if (testSet) {
                 printf("\t\tError on test set %.10f", net->computeMSE(*testSet));
             }
-            printf("\n");
+            std::cout << "\n";
         }
 
         //epochs training
@@ -313,24 +313,24 @@ private:
                             *bestClassTestNet = *net;
                             bestClassTest = per;
                             if (printtype == PRINT_ALL)
-                                printf(" ***");
+                                std::cout << " ***";
                         }
                     }
 
                     if (mseTest <= params.desired_error) {
                         if (printtype == PRINT_ALL)
-                            printf("\nDesired error reached on test set.\n");
+                            std::cout << "\nDesired error reached on test set.\n";
                         break;
                     }
 
                 }
 
                 if (printtype == PRINT_ALL)
-                    printf("\n");
+                    std::cout << "\n";
 
                 if (mseTrain <= params.desired_error && !testSet) {
                     if (printtype == PRINT_ALL)
-                        printf("Desired error reached on training set.\n");
+                        std::cout << "Desired error reached on training set.\n";
                     break;
                 }
             }
@@ -419,7 +419,7 @@ private:
             if (testSet) {
                 printf("\t\tError on test set %.10f", net->computeMSE(*testSet));
             }
-            printf("\n");
+            std::cout << "\n";
         }
 
         //epochs training
@@ -491,24 +491,24 @@ private:
                             *bestClassTestNet = *net;
                             bestClassTest = per;
                             if (printtype == PRINT_ALL)
-                                printf(" ***");
+                                std::cout << " ***";
                         }
                     }
 
                     if (mseTest <= params.desired_error) {
                         if (printtype == PRINT_ALL)
-                            printf("\nDesired error reached on test set.\n");
+                            std::cout << "\nDesired error reached on test set.\n";
                         break;
                     }
 
                 }
 
                 if (printtype == PRINT_ALL)
-                    printf("\n");
+                    std::cout << "\n";
 
                 if (mseTrain <= params.desired_error && !testSet) {
                     if (printtype == PRINT_ALL)
-                        printf("Desired error reached on training set.\n");
+                        std::cout << "Desired error reached on training set.\n";
                     break;
                 }
             }
@@ -516,7 +516,7 @@ private:
 
 
         if (printtype == PRINT_ALL)
-            printf("Training complete.\n");
+            std::cout << "Training complete.\n";
         if (testSet)
             return bestMSETest;
         else
@@ -528,6 +528,361 @@ private:
     ///batch training on device
     ///n is the number of parameters. parameters are (float array):
     ///desired error, max_epochs, epochs_between_reports, learning_rate, momentum (using momentum is 20% slower), shuffle (SHUFFLE_ON or SHUFFLE_OFF), error function (ERROR_TANH or ERROR_LINEAR)void FeedForwardNNTrainer::trainCpuBatch(const int n, const float * params){
+    float aSDFtrainGPUBatch(const TrainingParameters & params, const int printtype) {
+
+        if (printtype != PRINT_OFF)
+            print_parameters(params);
+
+        float mseTrain = FLT_MAX, mseTest = FLT_MAX;
+        //declare some error values for evaluating the trained network and storing best results
+        //best net MSE on test, best net MSE on train+test, best net as classifier on test
+        float bestMSETest = FLT_MAX, bestMSETrainTest = FLT_MAX, bestClassTest = 0;
+
+
+        //declare some network values
+        int numOfLayers = net->getNumOfLayers();
+        int numOfWeights = net->getNumOfWeights();
+        int numOfNeurons = 0;
+        for (int i = 0; i < net->getNumOfLayers(); i++) {
+            numOfNeurons += net->getLayersSize()[i] + 1;
+        }
+        //declare some training set values
+        int numOfTotalInstances = trainingSet->getNumOfInstances();
+        int numOfMinibatchInstances = 1000;
+
+        int numOfInputsPerInstance = trainingSet->getNumOfInputsPerInstance();
+        int numOfOutputsPerInstance = trainingSet->getNumOfOutputsPerInstance();
+
+        int numOfTestInstances = 0;
+
+        if (testSet)
+            numOfTestInstances = testSet->getNumOfInstances();
+
+        //declare an array of neurons to represent the neuron values
+        std::vector<float> values(numOfNeurons * numOfMinibatchInstances);
+        //declare an array of neurons to represent the neuron values of the test set
+        std::vector<float> testValues(numOfNeurons * numOfTestInstances);
+
+        //declare an array of deltas to represent the gradients for the weight updates
+        std::vector<float> deltas(numOfNeurons * numOfMinibatchInstances);
+
+        //training and test set to be uploaded in device memory
+        std::vector<float> columnTrainingSetInputs(numOfMinibatchInstances * numOfInputsPerInstance);
+        std::vector<float> columnTrainingSetOutputs(numOfMinibatchInstances * numOfOutputsPerInstance);
+        std::vector<float> columnTestSetInputs(numOfTestInstances * numOfInputsPerInstance);
+        std::vector<float> columnTestSetOutputs(numOfTestInstances * numOfOutputsPerInstance);
+        //declare an array of weights to use for momentum
+        std::vector<float> oldWeights(numOfWeights);
+        //declare a pointer to the net weights
+        float * weights = net->getWeights();
+        //declare a pointer to the net activation functions
+        const int * actFuncts = net->getActFuncts();
+        //declare a pointer to the net layers size
+        const int * layersSize = net->getLayersSize();
+
+        //declare a pointer to the training set inputs
+        float * trainingSetInputs = trainingSet->getInputs();
+        //declare a pointer to the training set outputs
+        float * trainingSetOutputs = trainingSet->getOutputs();
+
+        //declare a pointer to the test set inputs
+        float * testSetInputs = nullptr;
+        //declare a pointer to the test set outputs
+        float * testSetOutputs = nullptr;
+        if (testSet) {
+            testSetInputs = testSet->getInputs();
+            testSetOutputs = testSet->getOutputs();
+        }
+
+        //retrieve some offsets to manage array indexes of each layer 'i'
+        auto offsetWeights = net->get_weight_offsets(1);
+        auto offsetIns = net->get_input_offsets(numOfMinibatchInstances);
+        auto offsetOuts = net->get_output_offsets(numOfMinibatchInstances);
+
+        auto offsetDeltas = net->get_output_offsets(numOfMinibatchInstances);
+        auto offsetTestIns = net->get_input_offsets(numOfTestInstances);
+        auto offsetTestOuts = net->get_output_offsets(numOfTestInstances);
+
+        
+        //row-major->column major indexing
+        for (int i = 0; i < numOfTestInstances; i++) {
+            for (int j = 0; j < numOfInputsPerInstance; j++)
+                columnTestSetInputs[j * numOfTestInstances + i] = testSetInputs[i * numOfInputsPerInstance + j];
+            for (int j = 0; j < numOfOutputsPerInstance; j++)
+                columnTestSetOutputs[j * numOfTestInstances + i] = testSetOutputs[i * numOfOutputsPerInstance + j];
+        }
+                        
+        //copy the test set into the input neurons values
+        for (int i = 0; i < numOfTestInstances * numOfInputsPerInstance; i++)
+            testValues[i] = columnTestSetInputs[i];
+
+
+        
+        //BIAS initializations
+        if (testSet)
+            for (int i = 0; i < numOfLayers; i++) {
+                for (int j = offsetTestIns[i] + (layersSize[i]) * numOfTestInstances; j < offsetTestOuts[i]; j++)
+                    testValues[j] = 1.0f;
+            }
+
+
+        //vector to shuffle training set
+        /*
+        std::vector<int> order(numOfInstances);
+        for (int i = 0; i < numOfInstances; i++)
+            order[i] = i;
+        */
+
+        //cublas initializations
+        cublasStatus stat;
+
+        cublasInit();
+
+        float * devValues = nullptr;
+        float * devTestValues = nullptr;
+        float * devDeltas = nullptr;
+        float * devWeights = nullptr;
+        float * devOldWeights = nullptr;
+
+        float * devTrainingSetInputs = nullptr;
+        float * devTrainingSetOutputs = nullptr;
+        float * devTestSetInputs = nullptr;
+        float * devTestSetOutputs = nullptr;
+
+        auto testAllocSuccess = [&]() {
+            if (stat != CUBLAS_STATUS_SUCCESS)
+                throw std::runtime_error("device memory allocation failed");
+        };
+
+               
+
+        //allocates the vectors on the device
+        std::cout << "Allocating on GPU:\n";
+
+        std::cout << numOfNeurons * numOfMinibatchInstances << " elements for network neurons" << "\n";
+        stat = cublasAlloc(numOfNeurons* numOfMinibatchInstances, element_bytesize, (void**)&devValues);
+        testAllocSuccess();
+        if (testSet) {
+            std::cout << numOfNeurons * numOfTestInstances << " elements for network neurons (testing)" << "\n";
+            stat = cublasAlloc(numOfNeurons* numOfTestInstances, element_bytesize, (void**)&devTestValues);
+            testAllocSuccess();
+        }
+        std::cout << numOfNeurons * numOfMinibatchInstances << " elements for network deltas" << "\n";
+        stat = cublasAlloc(numOfNeurons* numOfMinibatchInstances, element_bytesize, (void**)&devDeltas);
+        testAllocSuccess();
+        std::cout << numOfWeights << " elements for network weights" << "\n";
+        stat = cublasAlloc(numOfWeights, element_bytesize, (void**)&devWeights);
+        testAllocSuccess();
+        if (params.momentum) {
+            std::cout << numOfWeights << " elements for network weights (momentums)" << "\n";
+            stat = cublasAlloc(numOfWeights, element_bytesize, (void**)&devOldWeights);
+            testAllocSuccess();
+        }
+
+        std::cout << numOfMinibatchInstances * numOfInputsPerInstance << " elements for training set inputs" << "\n";
+        stat = cublasAlloc(numOfMinibatchInstances * numOfInputsPerInstance, element_bytesize, (void**)&devTrainingSetInputs);
+        testAllocSuccess();
+        std::cout << numOfMinibatchInstances * numOfOutputsPerInstance << " elements for training set outputs" << "\n";
+        stat = cublasAlloc(numOfMinibatchInstances * numOfOutputsPerInstance, element_bytesize, (void**)&devTrainingSetOutputs);
+        testAllocSuccess();
+        if (testSet) {
+            std::cout << numOfTestInstances * numOfInputsPerInstance << " elements for test set inputs" << "\n";
+            stat = cublasAlloc(numOfTestInstances * numOfInputsPerInstance, element_bytesize, (void**)&devTestSetInputs);
+            testAllocSuccess();
+            std::cout << numOfTestInstances * numOfOutputsPerInstance << " elements for test set outputs" << "\n";
+            stat = cublasAlloc(numOfTestInstances * numOfOutputsPerInstance, element_bytesize, (void**)&devTestSetOutputs);
+            testAllocSuccess();
+        }
+
+
+        if (testSet) {
+            //copies the test set inputs and outputs on the device
+            cudaMemcpy(devTestSetInputs, &columnTestSetInputs[0], numOfTestInstances*numOfInputsPerInstance * element_bytesize, cudaMemcpyHostToDevice);
+            cudaMemcpy(devTestSetOutputs, &columnTestSetOutputs[0], numOfTestInstances*numOfOutputsPerInstance * element_bytesize, cudaMemcpyHostToDevice);
+        }
+
+        
+        if (testSet) {
+            //copies the test set inputs with the biases and the weights to the device
+            cudaMemcpy(devTestValues, &testValues[0], numOfNeurons * numOfTestInstances * element_bytesize, cudaMemcpyHostToDevice);
+        }
+
+        cudaMemcpy(devDeltas, &deltas[0], numOfNeurons * numOfMinibatchInstances * element_bytesize, cudaMemcpyHostToDevice);
+        //weights are allocated row-major
+        cudaMemcpy(devWeights, weights, numOfWeights * element_bytesize, cudaMemcpyHostToDevice);
+        if (params.momentum > 0)
+            cudaMemcpy(devOldWeights, weights, numOfWeights * element_bytesize, cudaMemcpyHostToDevice);
+
+        if (printtype == PRINT_ALL) {
+            //compute starting error rates (GPU)
+            printf("Starting:\tError on train set %.10f", GPUComputeMSE(devValues, devWeights, actFuncts, numOfLayers, layersSize, numOfMinibatchInstances, numOfOutputsPerInstance, devTrainingSetOutputs, &offsetIns[0], &offsetWeights[0], &offsetOuts[0]));
+            if (testSet) {
+                printf("\t\tError on test set %.10f", GPUComputeMSE(devTestValues, devWeights, actFuncts, numOfLayers, layersSize, numOfTestInstances, numOfOutputsPerInstance, devTestSetOutputs, &offsetTestIns[0], &offsetWeights[0], &offsetTestOuts[0]));
+            }
+            std::cout << "\n";
+        }
+
+
+        
+
+
+
+        //epochs training
+        for (int epoch = 1; epoch <= params.max_epochs && quit == false; epoch++) {
+            for(int mini_epochs = 0; mini_epochs < 1; ++mini_epochs)
+            for (int mini = 0; mini + numOfMinibatchInstances < numOfTotalInstances; mini += numOfMinibatchInstances) {
+
+
+                //row-major->column major indexing
+                for (int i = 0; i < numOfMinibatchInstances; i++) {
+                    for (int j = 0; j < numOfInputsPerInstance; j++)
+                        columnTrainingSetInputs[j * numOfMinibatchInstances + i] = trainingSetInputs[i * numOfInputsPerInstance + j + mini];
+                    for (int j = 0; j < numOfOutputsPerInstance; j++)
+                        columnTrainingSetOutputs[j * numOfMinibatchInstances + i] = trainingSetOutputs[i * numOfOutputsPerInstance + j + +mini];
+                }
+                //copy the training set into the input neurons values
+                for (int i = 0; i < numOfMinibatchInstances * numOfInputsPerInstance; i++)
+                    values[i] = columnTrainingSetInputs[i];
+
+                //BIAS initializations
+                for (int i = 0; i < numOfLayers; i++) {
+                    for (int j = offsetIns[i] + (layersSize[i]) * numOfMinibatchInstances; j < offsetOuts[i]; j++)
+                        values[j] = 1.0f;
+                }
+
+                //copies the training set inputs and outputs on the device
+                cudaMemcpy(devTrainingSetInputs, &columnTrainingSetInputs[0], numOfMinibatchInstances * numOfInputsPerInstance * element_bytesize, cudaMemcpyHostToDevice);
+                cudaMemcpy(devTrainingSetOutputs, &columnTrainingSetOutputs[0], numOfMinibatchInstances * numOfOutputsPerInstance * element_bytesize, cudaMemcpyHostToDevice);
+
+                //copies the training set inputs with the biases and the weights to the device
+                cudaMemcpy(devValues, &values[0], numOfNeurons * numOfMinibatchInstances * element_bytesize, cudaMemcpyHostToDevice);
+
+
+
+
+                /*
+                //shuffle instances
+                int ind = 0, aux = 0;
+                if (params.shuff == SHUFFLE_ON)
+                    for (int i = 0; i<numOfInstances; i++) {
+                        ind = gen_random_int(i, numOfInstances - 1);
+                        aux = order[ind];
+                        order[ind] = order[i];
+                        order[i] = aux;
+                    }
+                */
+
+                GPUForward(devValues, devWeights,
+                    actFuncts, numOfLayers, layersSize, numOfMinibatchInstances, numOfMinibatchInstances,
+                    &offsetIns[0], &offsetWeights[0], &offsetOuts[0]);
+
+                //computes all the instances backward of the backpropagation training
+                GPUBack(devValues, devWeights, devDeltas,
+                    actFuncts, numOfLayers, layersSize, numOfMinibatchInstances, numOfMinibatchInstances, numOfOutputsPerInstance,
+                    devTrainingSetOutputs, &offsetWeights[0], &offsetDeltas[0], &offsetOuts[0],
+                    params.errorFunc);
+
+                //update the weights using the deltas
+                GPUUpdate(devValues, devWeights, devDeltas,
+                    numOfLayers, layersSize, numOfMinibatchInstances, numOfMinibatchInstances,
+                    &offsetIns[0], &offsetWeights[0], &offsetDeltas[0],
+                    params.momentum, devOldWeights, params.learningRate);
+
+                if (params.epochs_between_reports > 0 && epoch % params.epochs_between_reports == 0) {
+
+                    bool updated_to_host = false;
+                    auto update_to_host = [&]() {
+                        if (!updated_to_host) {
+                            cudaMemcpy(weights, devWeights, numOfWeights * element_bytesize, cudaMemcpyDeviceToHost);
+                            updated_to_host = true;
+                        }
+                    };
+                    
+                    //float mseTrain=net->computeMSE(*trainingSet);
+
+                    mseTrain = GPUComputeMSE(devValues, devWeights, actFuncts, numOfLayers, layersSize, numOfMinibatchInstances, numOfOutputsPerInstance, devTrainingSetOutputs, &offsetIns[0], &offsetWeights[0], &offsetOuts[0]);
+                    if (printtype == PRINT_ALL)
+                        printf("Epoch    %d    Error on train set %.10f", epoch, mseTrain);
+                    
+                    if (testSet) {
+
+                        //float mseTest=net->computeMSE(*testSet);
+                        mseTest = GPUComputeMSE(devTestValues, devWeights, actFuncts, numOfLayers, layersSize, numOfTestInstances, numOfOutputsPerInstance, devTestSetOutputs, &offsetTestIns[0], &offsetWeights[0], &offsetTestOuts[0]);
+                        if (mseTest < bestMSETest) {
+                            bestMSETest = mseTest;
+                            if (bestMSETestNet) {
+                                update_to_host();
+                                *bestMSETestNet = *net;
+                            }
+                        }
+                        if ((mseTrain + mseTest) < bestMSETrainTest && bestMSETrainTestNet) {
+                            update_to_host();
+                            *bestMSETrainTestNet = *net;
+                            bestMSETrainTest = mseTrain + mseTest;
+                        }
+                        if (printtype == PRINT_ALL)
+                            printf("        Error on test set %.10f", mseTest);
+
+                        if (bestClassTestNet) {
+                            //float per=net->classificatePerc(*testSet);
+                            float per = GPUclassificatePerc(devTestValues, devWeights, actFuncts, numOfLayers, layersSize, numOfTestInstances, numOfOutputsPerInstance, devTestSetOutputs, &offsetTestIns[0], &offsetWeights[0], &offsetTestOuts[0]);
+                            if (printtype == PRINT_ALL)
+                                printf("        Classification percentage on test set: %.1f%%", per * 100);
+                            if (per > bestClassTest) {
+                                update_to_host();
+                                *bestClassTestNet = *net;
+                                bestClassTest = per;
+                                if (printtype == PRINT_ALL)
+                                    std::cout << " ***";
+                            }
+                        }
+
+                        if (mseTest <= params.desired_error) {
+                            if (printtype == PRINT_ALL)
+                                std::cout << "\nDesired error reached on test set.\n";
+                            break;
+                        }
+
+                    }
+
+                    if (printtype == PRINT_ALL)
+                        std::cout << "\n";
+
+                    if (mseTrain <= params.desired_error && !testSet) {
+                        if (printtype == PRINT_ALL)
+                            std::cout << "Desired error reached on training set.\n";
+                        break;
+                    }
+                }
+            }
+
+        }
+
+        cudaMemcpy(weights, devWeights, numOfWeights * element_bytesize, cudaMemcpyDeviceToHost);
+
+        //cublas deallocations
+        cublasFree(devValues);
+        cublasFree(devTestValues);
+        cublasFree(devDeltas);
+        cublasFree(devWeights);
+        if (params.momentum > 0)
+            cublasFree(devOldWeights);
+
+        cublasFree(devTrainingSetInputs);
+        cublasFree(devTrainingSetOutputs);
+        cublasFree(devTestSetInputs);
+        cublasFree(devTestSetOutputs);
+
+        cublasShutdown();
+
+        if (printtype == PRINT_ALL)
+            printf("Training complete.\n");
+        if (testSet)
+            return bestMSETest;
+        else
+            return mseTrain;
+    }
+
     float trainGPUBatch(const TrainingParameters & params, const int printtype) {
 
         if (printtype != PRINT_OFF)
@@ -600,7 +955,7 @@ private:
         auto offsetTestIns = net->get_input_offsets(numOfTestInstances);
         auto offsetTestOuts = net->get_output_offsets(numOfTestInstances);
 
-        
+
         //row-major->column major indexing
         for (int i = 0; i < numOfInstances; i++) {
             for (int j = 0; j < numOfInputsPerInstance; j++)
@@ -662,53 +1017,70 @@ private:
             if (stat != CUBLAS_STATUS_SUCCESS)
                 throw std::runtime_error("device memory allocation failed");
         };
+
+
+
         //allocates the vectors on the device
-        stat = cublasAlloc(numOfNeurons*numOfInstances, sizeof(values[0]), (void**)&devValues);
+        std::cout << "Allocating on GPU:\n";
+
+        std::cout << numOfNeurons *numOfInstances << " elements for network neurons" << "\n";
+        stat = cublasAlloc(numOfNeurons*numOfInstances, element_bytesize, (void**)&devValues);
         testAllocSuccess();
         if (testSet) {
-            stat = cublasAlloc(numOfNeurons*numOfTestInstances, sizeof(testValues[0]), (void**)&devTestValues);
+            std::cout << numOfNeurons * numOfTestInstances << " elements for network neurons (testing)" << "\n";
+            stat = cublasAlloc(numOfNeurons* numOfTestInstances, element_bytesize, (void**)&devTestValues);
             testAllocSuccess();
         }
-        stat = cublasAlloc(numOfNeurons*numOfInstances, sizeof(deltas[0]), (void**)&devDeltas);
+        std::cout << numOfNeurons * numOfInstances << " elements for network deltas" << "\n";
+        stat = cublasAlloc(numOfNeurons* numOfInstances, element_bytesize, (void**)&devDeltas);
         testAllocSuccess();
-        stat = cublasAlloc(numOfWeights, sizeof(*weights), (void**)&devWeights);
+        std::cout << numOfWeights << " elements for network weights" << "\n";
+        stat = cublasAlloc(numOfWeights, element_bytesize, (void**)&devWeights);
         testAllocSuccess();
-        stat = cublasAlloc(numOfWeights, sizeof(oldWeights[0]), (void**)&devOldWeights);
-        testAllocSuccess();
+        if (params.momentum) {
+            std::cout << numOfWeights << " elements for network weights (momentums)" << "\n";
+            stat = cublasAlloc(numOfWeights, element_bytesize, (void**)&devOldWeights);
+            testAllocSuccess();
+        }
 
-        stat = cublasAlloc(numOfInstances*numOfInputsPerInstance, sizeof(*devTrainingSetInputs), (void**)&devTrainingSetInputs);
+        std::cout << numOfInstances * numOfInputsPerInstance << " elements for training set inputs" << "\n";
+        stat = cublasAlloc(numOfInstances * numOfInputsPerInstance, element_bytesize, (void**)&devTrainingSetInputs);
         testAllocSuccess();
-        stat = cublasAlloc(numOfInstances*numOfOutputsPerInstance, sizeof(*devTrainingSetOutputs), (void**)&devTrainingSetOutputs);
+        std::cout << numOfInstances * numOfOutputsPerInstance << " elements for training set outputs" << "\n";
+        stat = cublasAlloc(numOfInstances * numOfOutputsPerInstance, element_bytesize, (void**)&devTrainingSetOutputs);
         testAllocSuccess();
         if (testSet) {
-            stat = cublasAlloc(numOfTestInstances*numOfInputsPerInstance, sizeof(*devTestSetInputs), (void**)&devTestSetInputs);
+            std::cout << numOfTestInstances * numOfInputsPerInstance << " elements for test set inputs" << "\n";
+            stat = cublasAlloc(numOfTestInstances * numOfInputsPerInstance, element_bytesize, (void**)&devTestSetInputs);
             testAllocSuccess();
-            stat = cublasAlloc(numOfTestInstances*numOfOutputsPerInstance, sizeof(*devTestSetOutputs), (void**)&devTestSetOutputs);
+            std::cout << numOfTestInstances * numOfOutputsPerInstance << " elements for test set outputs" << "\n";
+            stat = cublasAlloc(numOfTestInstances * numOfOutputsPerInstance, element_bytesize, (void**)&devTestSetOutputs);
             testAllocSuccess();
         }
 
         //copies the training set inputs and outputs on the device
-        cudaMemcpy(devTrainingSetInputs, &columnTrainingSetInputs[0], numOfInstances*numOfInputsPerInstance * sizeof(columnTrainingSetInputs[0]), cudaMemcpyHostToDevice);
-        cudaMemcpy(devTrainingSetOutputs, &columnTrainingSetOutputs[0], numOfInstances*numOfOutputsPerInstance * sizeof(columnTrainingSetOutputs[0]), cudaMemcpyHostToDevice);
+        cudaMemcpy(devTrainingSetInputs, &columnTrainingSetInputs[0], numOfInstances * numOfInputsPerInstance * element_bytesize, cudaMemcpyHostToDevice);
+        cudaMemcpy(devTrainingSetOutputs, &columnTrainingSetOutputs[0], numOfInstances * numOfOutputsPerInstance * element_bytesize, cudaMemcpyHostToDevice);
 
         if (testSet) {
             //copies the test set inputs and outputs on the device
-            cudaMemcpy(devTestSetInputs, &columnTestSetInputs[0], numOfTestInstances*numOfInputsPerInstance * sizeof(columnTestSetInputs[0]), cudaMemcpyHostToDevice);
-            cudaMemcpy(devTestSetOutputs, &columnTestSetOutputs[0], numOfTestInstances*numOfOutputsPerInstance * sizeof(columnTestSetOutputs[0]), cudaMemcpyHostToDevice);
+            cudaMemcpy(devTestSetInputs, &columnTestSetInputs[0], numOfTestInstances*numOfInputsPerInstance * element_bytesize, cudaMemcpyHostToDevice);
+            cudaMemcpy(devTestSetOutputs, &columnTestSetOutputs[0], numOfTestInstances*numOfOutputsPerInstance * element_bytesize, cudaMemcpyHostToDevice);
         }
 
         //copies the training set inputs with the biases and the weights to the device
-        cudaMemcpy(devValues, &values[0], numOfNeurons*numOfInstances * sizeof(values[0]), cudaMemcpyHostToDevice);
+        cudaMemcpy(devValues, &values[0], numOfNeurons*numOfInstances * element_bytesize, cudaMemcpyHostToDevice);
 
         if (testSet) {
             //copies the test set inputs with the biases and the weights to the device
-            cudaMemcpy(devTestValues, &testValues[0], numOfNeurons*numOfTestInstances * sizeof(testValues[0]), cudaMemcpyHostToDevice);
+            cudaMemcpy(devTestValues, &testValues[0], numOfNeurons*numOfTestInstances * element_bytesize, cudaMemcpyHostToDevice);
         }
 
-        cudaMemcpy(devDeltas, &deltas[0], numOfNeurons*numOfInstances * sizeof(deltas[0]), cudaMemcpyHostToDevice);
+        cudaMemcpy(devDeltas, &deltas[0], numOfNeurons*numOfInstances * element_bytesize, cudaMemcpyHostToDevice);
         //weights are allocated row-major
-        cudaMemcpy(devWeights, weights, numOfWeights * sizeof(*weights), cudaMemcpyHostToDevice);
-        cudaMemcpy(devOldWeights, weights, numOfWeights * sizeof(*weights), cudaMemcpyHostToDevice);
+        cudaMemcpy(devWeights, weights, numOfWeights * element_bytesize, cudaMemcpyHostToDevice);
+        if (params.momentum > 0)
+            cudaMemcpy(devOldWeights, weights, numOfWeights * element_bytesize, cudaMemcpyHostToDevice);
 
         if (printtype == PRINT_ALL) {
             //compute starting error rates (GPU)
@@ -716,7 +1088,7 @@ private:
             if (testSet) {
                 printf("\t\tError on test set %.10f", GPUComputeMSE(devTestValues, devWeights, actFuncts, numOfLayers, layersSize, numOfTestInstances, numOfOutputsPerInstance, devTestSetOutputs, &offsetTestIns[0], &offsetWeights[0], &offsetTestOuts[0]));
             }
-            printf("\n");
+            std::cout << "\n";
         }
 
         //epochs training
@@ -750,7 +1122,13 @@ private:
 
             if (params.epochs_between_reports > 0 && epoch % params.epochs_between_reports == 0) {
 
-                cudaMemcpy(weights, devWeights, numOfWeights * sizeof(float), cudaMemcpyDeviceToHost);
+                bool updated_to_host = false;
+                auto update_to_host = [&]() {
+                    if (!updated_to_host) {
+                        cudaMemcpy(weights, devWeights, numOfWeights * element_bytesize, cudaMemcpyDeviceToHost);
+                        updated_to_host = true;
+                    }
+                };
 
                 //float mseTrain=net->computeMSE(*trainingSet);
                 mseTrain = GPUComputeMSE(devValues, devWeights, actFuncts, numOfLayers, layersSize, numOfInstances, numOfOutputsPerInstance, devTrainingSetOutputs, &offsetIns[0], &offsetWeights[0], &offsetOuts[0]);
@@ -761,13 +1139,15 @@ private:
 
                     //float mseTest=net->computeMSE(*testSet);
                     mseTest = GPUComputeMSE(devTestValues, devWeights, actFuncts, numOfLayers, layersSize, numOfTestInstances, numOfOutputsPerInstance, devTestSetOutputs, &offsetTestIns[0], &offsetWeights[0], &offsetTestOuts[0]);
-                    if (mseTest<bestMSETest) {
+                    if (mseTest < bestMSETest) {
                         bestMSETest = mseTest;
                         if (bestMSETestNet) {
+                            update_to_host();
                             *bestMSETestNet = *net;
                         }
                     }
-                    if ((mseTrain + mseTest)<bestMSETrainTest&&bestMSETrainTestNet) {
+                    if ((mseTrain + mseTest) < bestMSETrainTest && bestMSETrainTestNet) {
+                        update_to_host();
                         *bestMSETrainTestNet = *net;
                         bestMSETrainTest = mseTrain + mseTest;
                     }
@@ -779,41 +1159,43 @@ private:
                         float per = GPUclassificatePerc(devTestValues, devWeights, actFuncts, numOfLayers, layersSize, numOfTestInstances, numOfOutputsPerInstance, devTestSetOutputs, &offsetTestIns[0], &offsetWeights[0], &offsetTestOuts[0]);
                         if (printtype == PRINT_ALL)
                             printf("        Classification percentage on test set: %.1f%%", per * 100);
-                        if (per>bestClassTest) {
+                        if (per > bestClassTest) {
+                            update_to_host();
                             *bestClassTestNet = *net;
                             bestClassTest = per;
                             if (printtype == PRINT_ALL)
-                                printf(" ***");
+                                std::cout << " ***";
                         }
                     }
 
                     if (mseTest <= params.desired_error) {
                         if (printtype == PRINT_ALL)
-                            printf("\nDesired error reached on test set.\n");
+                            std::cout << "\nDesired error reached on test set.\n";
                         break;
                     }
 
                 }
 
                 if (printtype == PRINT_ALL)
-                    printf("\n");
+                    std::cout << "\n";
 
                 if (mseTrain <= params.desired_error && !testSet) {
                     if (printtype == PRINT_ALL)
-                        printf("Desired error reached on training set.\n");
+                        std::cout << "Desired error reached on training set.\n";
                     break;
                 }
             }
         }
 
-        cudaMemcpy(weights, devWeights, numOfWeights * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(weights, devWeights, numOfWeights * element_bytesize, cudaMemcpyDeviceToHost);
 
         //cublas deallocations
         cublasFree(devValues);
         cublasFree(devTestValues);
         cublasFree(devDeltas);
         cublasFree(devWeights);
-        cublasFree(devOldWeights);
+        if (params.momentum > 0)
+            cublasFree(devOldWeights);
 
         cublasFree(devTrainingSetInputs);
         cublasFree(devTrainingSetOutputs);
@@ -834,11 +1216,11 @@ private:
     ///computes a single instance forward of the backpropagation training
     void stepForward(float * values, const  float * weights, const  int * actFuncts, const  int numOfLayers, const  int * layersSize, const  int numOfInputsPerInstance, const float * trainingSetInputs, const int * offsetIns, const int * offsetWeights, const int * offsetOuts, const int * order, const int instance) {
         //load an array of inputs
-        for (int i = 0; i<numOfInputsPerInstance; i++)
+        for (int i = 0; i < numOfInputsPerInstance; i++)
             values[i] = trainingSetInputs[order[instance] * numOfInputsPerInstance + i];
 
         //loops the layers
-        for (int i = 0; i<numOfLayers - 1; i++) {
+        for (int i = 0; i < numOfLayers - 1; i++) {
 
             //bias neuron
             values[offsetIns[i] + layersSize[i]] = 1.0;
@@ -903,7 +1285,7 @@ private:
     ///update the weights using the deltas
     void weightsUpdate(const float * values, const float * weights, float * weightsToUpdate, const float * deltas, const  int numOfLayers, const  int * layersSize, const int * offsetIns, const int * offsetWeights, const int * offsetDeltas, const float momentum, float * oldWeights, float learningRate) {
         //loops the layers
-        if (momentum>0)
+        if (momentum > 0)
             for (int i = 0; i<numOfLayers - 1; i++) {
                 for (int k = 0; k<layersSize[i + 1]; k++) {
                     //efficient code to speed up the backpropagation
@@ -942,7 +1324,7 @@ private:
         const int totNumOfInstances, const int numOfInstancesToUse,
         const int * offsetIns, const int * offsetWeights, const int * offsetOuts) {
         //loops the layers
-        for (int i = 0; i<numOfLayers - 1; i++) {
+        for (int i = 0; i < numOfLayers - 1; i++) {
 
             int ninput = totNumOfInstances;
             int naux = layersSize[i] + 1;
@@ -1017,7 +1399,7 @@ private:
         const float momentum, float * devOldWeights, const float learningRate) {
 
         //loops the layers
-        for (int i = 0; i<numOfLayers - 1; i++) {
+        for (int i = 0; i < numOfLayers - 1; i++) {
 
             int ninput = layersSize[i] + 1;
             int naux = totNumOfInstances;
@@ -1030,7 +1412,7 @@ private:
             devPtrB = devDeltas + offsetDeltas[i];
             devPtrC = devWeights + offsetWeights[i];
 
-            if (momentum>0) {
+            if (momentum > 0) {
                 //if there's a momentum it updates the weights with a portion of the difference with the old weights
                 addMomentum(devWeights + offsetWeights[i], devOldWeights + offsetWeights[i], layersSize[i + 1] * (layersSize[i] + 1), momentum);
             }
@@ -1150,6 +1532,9 @@ private:
         return (float)cont / (float)numOfInstances;
     }
 #endif
+
+    typedef float NetElement;
+    const int element_bytesize = sizeof(NetElement);
 
     FeedForwardNN * net = nullptr;
     LearningSet * trainingSet = nullptr;
