@@ -79,6 +79,58 @@ void test_all(const FeedForwardNN & mynet, const LearningSet & testSet) {
 }
 
 int main(){
+    std::string base = R"(c:\users\luca\desktop\)";
+
+    
+    auto fronti = LearningSet::readSimplifiedSet(std::string(base +"points_front.set").c_str());
+    auto retri = LearningSet::readSimplifiedSet(std::string(base + "points_back.set").c_str());
+
+    fronti = fronti.shuffle();
+    retri = retri.shuffle();
+
+    int split = 12 * 20;
+
+    int n = 0;
+    n = 0;
+    auto testfronti = fronti.filter_set_by([&](auto, auto, auto) {
+        return n++ < split;
+    });
+    n = 0;    
+    auto trainfronti = fronti.filter_set_by([&](auto, auto, auto) {
+        if (n >= split && n < 27 * 20) {
+            ++n;
+            return true;
+        }
+        ++n;
+        return false;
+    });
+
+    n = 0;
+    auto testretri = retri.filter_set_by([&](auto, auto, auto) {
+        return n++ < split;
+    });
+    n = 0;
+    auto trainretri = retri.filter_set_by([&](auto, auto, auto) {
+        if (n >= split && n < 27 * 20) {
+            ++n;
+            return true;
+        }
+        ++n;
+        return false;
+    });
+
+    auto alltrain = trainfronti;
+    alltrain.insert(trainretri);
+
+    auto alltest = testfronti;
+    alltest.insert(testretri);
+
+    alltrain = alltrain.shuffle();
+    alltrain.writeFannSet(std::string(base + "tom_train.set").c_str());
+    alltest = alltest.shuffle();
+    alltest.writeFannSet(std::string(base + "tom_test.set").c_str());
+    
+
     /*
     {
         LearningSet set;
@@ -111,27 +163,32 @@ int main(){
             for (int i = 0; i < 28 * 28; ++i) {
                 bin_read(ifs_i, data[i]);
             }
+            if (!ifs_i)
+                break;
             for (auto && el : data) {
                 ofs << int(el) << " ";
             }
             ofs << "\n";
 
-            data.resize(1);
-            for (int i = 0; i < 1; ++i) {
-                bin_read(ifs_o, data[i]);
-            }
-            for (auto && el : data) {
-                ofs << int(el) << " ";
+            uint8_t label;
+            bin_read(ifs_o, label);
+            if (!ifs_o)
+                break;
+
+            for (int i = 0; i < 10; ++i) {
+                if(i == label)
+                    ofs << int(1) << " ";
+                else
+                    ofs << int(0) << " ";
             }
             ofs << "\n";
 
             if (!ifs_i || !ifs_o)
                 break;
-        }
-
-        
+        }        
     }
     */
+    
     /*
     //TRAINING EXAMPLE
     std::string base = R"(C:\Users\Luca\Desktop\adidas_project\trunk\vision_code\feature_extraction.build\)";
@@ -174,6 +231,15 @@ int main(){
     tot = 0;
     trainingSet = trainingSet.filter_set_by([&](auto && n, auto && i, auto && o) {return tot++ < 4000; });
     */
+    /*
+    LearningSet trainingSet = LearningSet::readFannSet(R"(c:\users\luca\desktop\minst.fann_train)");
+    LearningSet testSet = LearningSet::readFannSet(R"(c:\users\luca\desktop\minst.fann_test)");
+    //trainingSet.writeFannSet(R"(c:\users\luca\desktop\minst.fann_train)");
+    //testSet.writeFannSet(R"(c:\users\luca\desktop\minst.fann_test)");
+    
+    std::vector<int> layers={28 * 28,300,100,10};
+    std::vector<int> functs = { 3,3,3,1 };
+    */
     //std::vector<int> layers = { 13,300,200,1 };
     //std::vector<int> functs = { ACT_RELU, ACT_RELU, ACT_RELU, ACT_SIGMOID };
 
@@ -187,26 +253,33 @@ int main(){
     //LearningSet testSet(R"(C:\Users\Luca\Desktop\libcudann.build\mushroom.test)");
     //std::vector<int> layers={125,100,2};
     //std::vector<int> functs = { 3,3,1 };
-
+    /*
     LearningSet trainingSet = LearningSet::readBinarySet("adi_train.set");
-    int n = 0;
-    trainingSet = trainingSet.shuffle().filter_set_by([&](auto&&, auto &&, auto &&) {return n++ < 300 * 4; });
+    //int n = 0;
+    trainingSet = trainingSet.shuffle().filter_set_by([&](auto&&, auto &&, auto &&) {return n++ < 400 * 4; });
     //trainingSet = trainingSet.shuffle();
     LearningSet testSet = LearningSet::readBinarySet("adi_test.set");
     std::vector<LearningSet> batches;
     n = 0;
     //trainingSet = trainingSet.filter_set_by([&](auto, auto, auto) {++n; return n < 400*4; });
-    /*
-    for (int i = 0; i < trainingSet.getNumOfInstances(); i += 300 * 4) {
-        n = 0;
-        batches.push_back(trainingSet.filter_set_by([&] (auto,auto,auto){++n; return n > i && n < i + 1200; }));
-    }
-    trainingSet = LearningSet();
-    */
+    
+    ////for (int i = 0; i < trainingSet.getNumOfInstances(); i += 300 * 4) {
+    ////    n = 0;
+    ////    batches.push_back(trainingSet.filter_set_by([&] (auto,auto,auto){++n; return n > i && n < i + 1200; }));
+    ////}
+    ////trainingSet = LearningSet();
+    
     //LearningSet trainingSet(R"(C:\Users\Luca\Desktop\adidas_project\trunk\vision_code\feature_extraction.build\train.set)");
     //LearningSet testSet(R"(C:\Users\Luca\Desktop\adidas_project\trunk\vision_code\feature_extraction.build\train.set)");
-    std::vector<int> layers = { 200 * 200 * 3, 500,500,500,500, 500, 500, 500,500,500,500,500,4 };
-    std::vector<int> functs={3,3,3,3,3,3,3,3,3,3,3,3,1};
+    std::vector<int> layers = { 200 * 200 * 3, 700,700,500,500,300,300,4 };
+    std::vector<int> functs={3,3,3,3,3,3,3,1};
+    */
+
+    LearningSet trainingSet = LearningSet::readFannSet(std::string(base + "tom_train.set").c_str());
+    LearningSet testSet = LearningSet::readFannSet(std::string(base + "tom_test.set").c_str());
+    std::vector<int> layers = { 1500, 800, 500,2 };
+    std::vector<int> functs = { 3,3,3,1 };
+
 
     //layer sizes
     //activation functions (1=sigm,2=tanh,3=relu)
@@ -215,7 +288,8 @@ int main(){
     //declare the network with the number of layers
     //FeedForwardNN mynet(3, layers, functs);
     FeedForwardNN mynet(layers.size(),&layers[0],&functs[0]);
-    mynet.initWeights(-0.01, 0.01);
+    mynet.initWeightsUniform(-0.01, 0.01);
+    //mynet.initWeightsGaussian(1.0, 0.01);
     //mynet.initWidrowNguyen(testSet);
     
     FeedForwardNNTrainer trainer;
@@ -232,43 +306,22 @@ int main(){
     trainer.selectBestClassTestNet(cl);
 
     //parameters:
-   /* for(int i=0;i<100;++i)
-        for (auto&& tr1 : batches) {
-            trainer.selectTrainingSet(tr1);
-            // mynet.initWidrowNguyen(trainingSet);
-                
-            TrainingParameters params;
-            params.training_location = TRAIN_GPU;
-            params.training_algorithm = ALG_BATCH;
-            params.desired_error = 0.0;
-            params.max_epochs = 30;
-            params.epochs_between_reports = 30;
-            params.learningRate = 0.001;
-            params.momentum = 0.0;
-            params.shuff = SHUFFLE_ON;
-            params.errorFunc = ERROR_LINEAR;
-        
-            trainer.train(params);
-        }*/
+   
+    //trainer.selectTrainingSet(trainingSet);
+    // mynet.initWidrowNguyen(trainingSet);
 
-    //for (int i = 0; i<100; ++i)
-      //  for (auto&& tr1 : batches) {
-            trainer.selectTrainingSet(trainingSet);
-            // mynet.initWidrowNguyen(trainingSet);
+    TrainingParameters params;
+    params.training_location = TRAIN_GPU;
+    params.training_algorithm = ALG_BATCH;
+    params.desired_error = 0.0;
+    params.max_epochs = 150;
+    params.epochs_between_reports = 1;
+    params.learningRate = 0.0001;
+    params.momentum = 0.90;
+    params.shuff = SHUFFLE_ON;
+    params.errorFunc = ERROR_LINEAR;
 
-            TrainingParameters params;
-            params.training_location = TRAIN_GPU;
-            params.training_algorithm = ALG_BATCH;
-            params.desired_error = 0.0;
-            params.max_epochs = 3000;
-            params.epochs_between_reports = 10;
-            params.learningRate = 0.1;
-         //   params.momentum = 0.7;
-            params.shuff = SHUFFLE_ON;
-            params.errorFunc = ERROR_LINEAR;
-
-            trainer.train(params);
-     //   }
+    trainer.train(params);
     
     mynet.saveToTxt("mynetmushrooms.net");
     
@@ -277,8 +330,8 @@ int main(){
     cl.saveToTxt("clmushrooms.net");
     std::cout << "saved" << "\n";
 
-    test_classification(cl, testSet);
-    test_all(cl, testSet);
+    //test_classification(cl, testSet);
+    //test_all(cl, testSet);
 
     getchar();
 

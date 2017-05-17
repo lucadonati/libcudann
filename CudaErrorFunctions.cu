@@ -42,20 +42,20 @@ float mseError(const float * desired, float * neurons, const int number, const i
     return cublasSdot(number, neurons, 1, neurons, 1)/(float)number;
 }
 
-
+/* //BUG
 __global__ void maxes(const int nOfInst, const int nOfOut, const float * neurons, int * indexes) {
     extern __shared__ float sdata[];
     float *sidx = sdata + BLOCKSIZE;
 
-    const int tid        = threadIdx.x;                    // thread index
-    const int thread_lane    = tid & (WARP_SIZE-1);        // thread index within the warp
-    const int g_tid        = BLOCKSIZE * blockIdx.x + tid;    // global thread index
-    const int g_warp_id    = g_tid / WARP_SIZE;            // global warp index
+    const int tid          = threadIdx.x;                   // thread index
+    const int thread_lane  = tid & (WARP_SIZE - 1);         // thread index within the warp
+    const int g_tid        = BLOCKSIZE * blockIdx.x + tid;  // global thread index
+    const int g_warp_id    = g_tid / WARP_SIZE;             // global warp index
 
-    const int offset=g_warp_id*nOfOut;
+    const int offset=g_warp_id * nOfOut;
 
     //loading in shared data of values
-    sdata[tid]=((offset+thread_lane<nOfInst*nOfOut)&&(thread_lane<nOfOut))?neurons[offset+thread_lane]:0.0f;
+    sdata[tid] = ((offset + thread_lane < nOfInst * nOfOut) && (thread_lane < nOfOut)) ? neurons[offset+thread_lane] : 0.0f;
     //loading in shared data of indexes
     sidx[tid]=thread_lane;
 
@@ -78,17 +78,34 @@ __global__ void maxes(const int nOfInst, const int nOfOut, const float * neurons
 
         //return the best neuron index
         if (thread_lane == 0){
-            indexes[g_warp_id]=sidx[tid];
+            indexes[g_warp_id] = sidx[tid];
         }
 
     }
 }
+*/
+__global__ void maxes_single(const int nOfInst, const int nOfOut, const float * neurons, int * indexes) {
+    for (int i = 0; i < nOfInst; ++i) {
+        float max = -1.0e50;
+        int max_ind = 0;
+        for (int o = 0; o < nOfOut; ++o) {
+            if (neurons[i * nOfOut + o] > max) {
+                max_ind = o;
+                max = neurons[i * nOfOut + o];
+            }
+        }
+        indexes[i] = max_ind;
+    }
+
+}
 //find the (indexes) of the max values of each row of a set of (neurons), divided in rows(nOfOut) and columns(nOfInst)
 void computeMaxes(const int nOfInst, const int nOfOut, const float * neurons, int * indexes) {
-    int numBlocks = nOfInst / (BLOCKSIZE/WARP_SIZE)+1;
+    int numBlocks = nOfInst / (BLOCKSIZE / WARP_SIZE) + 1;
     int smemSize = 2 * BLOCKSIZE  * sizeof(float);
 
-    maxes<<<numBlocks, BLOCKSIZE,smemSize>>>(nOfInst, nOfOut, neurons, indexes);
+    // was bugged
+    //maxes<<<numBlocks, BLOCKSIZE,smemSize>>>(nOfInst, nOfOut, neurons, indexes);
+    maxes_single<<<1, 1>>>(nOfInst, nOfOut, neurons, indexes);
 }
 
 
@@ -109,17 +126,17 @@ void addMomentum(float * weights, float * oldWeights,const int number, const flo
 }
 
 
-__global__ void trMatrix(const int x, const int y, const float * in, float * out) {
+__global__ void trMatrix(const int width, const int height, const float * in, float * out) {
     //global thread index
     const int g_tid = BLOCKSIZE * blockIdx.x + threadIdx.x;
 
-    if(g_tid<x*y){
-        out[g_tid%x*y+g_tid/x]=in[g_tid];
+    if(g_tid < width * height){
+        out[g_tid % width * height + g_tid / width] = in[g_tid];
     }
 }
-//translate a matrix x-y (rows large (x) and columns high (y)) to one y-x
-void translateMatrix(const int x, const int y, const float * in, float * out) {
-    int numBlocks = (x*y)/BLOCKSIZE+1;
-    trMatrix<<<numBlocks, BLOCKSIZE>>>(x,y,in,out);
+//translate a matrix width-height (rows large (width) and columns high (height)) to one height-width
+void translateMatrix(const int width, const int height, const float * in, float * out) {
+    int numBlocks = (width * height)/BLOCKSIZE+1;
+    trMatrix<<<numBlocks, BLOCKSIZE>>>(width,height,in,out);
 }
 

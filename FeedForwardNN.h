@@ -42,7 +42,7 @@ public:
             numOfWeights += (layersSize[i] + 1)*layersSize[i + 1];
         }
         weights.resize(numOfWeights);
-        initWeights();
+        initWeightsUniform();
     }
 
     ///constructor from txt file
@@ -91,12 +91,17 @@ public:
     }
 
     /// initialize randomly the network weights between min and max
-    void initWeights(float min = -INITWEIGHTMAX, float max = INITWEIGHTMAX) {
+    void initWeightsUniform(float min = -INITWEIGHTMAX, float max = INITWEIGHTMAX) {
         for (int i = 0; i<numOfWeights; i++) {
             //TEST WEIGHTS
             //weights[i]=2;
             //weights[i]=(2*max*gen_random_real(0, 1))-max;
-            weights[i] = gen_random_real(min, max);
+            weights[i] = gen_uniform_real(min, max);
+        }
+    }
+    void initWeightsGaussian(float stdev, float multiplier) {
+        for (int i = 0; i<numOfWeights; i++) {
+            weights[i] = gen_gaussian_real(0, stdev) * multiplier;
         }
     }
 
@@ -131,12 +136,14 @@ public:
             for (int j = 0; j<layersSize[i + 1]; j++)
                 for (int k = 0; k<layersSize[i] + 1; k++)
                     if (k<layersSize[i]) {
-                        weights[offsetWeights[i] + j*(layersSize[i] + 1) + k] = mult * gen_random_real(0, 1);
+                        weights[offsetWeights[i] + j*(layersSize[i] + 1) + k] = mult * gen_uniform_real(0, 1);
 
                     }
                     else
-                        weights[offsetWeights[i] + j*(layersSize[i] + 1) + k] = 2 * mult*gen_random_real(0, 1) - mult;
+                        weights[offsetWeights[i] + j*(layersSize[i] + 1) + k] = 2 * mult*gen_uniform_real(0, 1) - mult;
     }
+
+
 
     /// computes the net outputs
     void compute(const float * inputs, float * outputs) const {

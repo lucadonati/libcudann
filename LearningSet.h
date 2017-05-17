@@ -113,6 +113,8 @@ public:
         int totlines = 0;
         std::string line;
         while (std::getline(ifs, line)) {
+            if (!ifs)
+                break;
             std::istringstream iss(line);
             while (iss) {
                 float tmp = 0.0;
@@ -127,6 +129,7 @@ public:
             in = !in;
             ++totlines;
         }
+
         
         set.numOfInstances = totlines / 2;
 

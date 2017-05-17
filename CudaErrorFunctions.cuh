@@ -23,5 +23,5 @@ float mseError(const float * desired, float * neurons, const int number, const i
 void computeMaxes(const int nOfInst, const int nOfOut, const float * neurons, int * indexes);
 //adds to (number) elements of (weights) the difference between (weights) and (oldWeights) multiplied with (momentum)
 void addMomentum(float * weights, float * oldWeights,const int number, const float momentum);
-//translate a matrix x-y (rows large (x) and columns high (y)) to one y-x
-void translateMatrix(const int x, const int y, const float * in, float * out);
+//translate a matrix width-height (rows large (width) and columns high (height)) to one height-width
+void translateMatrix(const int width, const int height, const float * in, float * out);

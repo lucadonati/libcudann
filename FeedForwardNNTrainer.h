@@ -61,7 +61,7 @@ inline void print_parameters(const TrainingParameters & params) {
     else
         std::cout << "GPU\n";
     std::cout << "Algorithm:\t\t";
-    if (params.training_location == ALG_BP)
+    if (params.training_algorithm == ALG_BP)
         std::cout << "Backpropagation\n";
     else
         std::cout << "Batch\n";
@@ -263,7 +263,7 @@ private:
             int ind = 0, aux = 0;
             if (params.shuff == SHUFFLE_ON)
                 for (int i = 0; i < numOfInstances; i++) {
-                    ind = gen_random_int(i, numOfInstances - 1);
+                    ind = gen_uniform_int(i, numOfInstances - 1);
                     aux = order[ind];
                     order[ind] = order[i];
                     order[i] = aux;
@@ -429,7 +429,7 @@ private:
             int ind = 0, aux = 0;
             if (params.shuff == SHUFFLE_ON)
                 for (int i = 0; i<numOfInstances; i++) {
-                    ind = gen_random_int(i, numOfInstances - 1);
+                    ind = gen_uniform_int(i, numOfInstances - 1);
                     aux = order[ind];
                     order[ind] = order[i];
                     order[i] = aux;
@@ -528,7 +528,7 @@ private:
     ///batch training on device
     ///n is the number of parameters. parameters are (float array):
     ///desired error, max_epochs, epochs_between_reports, learning_rate, momentum (using momentum is 20% slower), shuffle (SHUFFLE_ON or SHUFFLE_OFF), error function (ERROR_TANH or ERROR_LINEAR)void FeedForwardNNTrainer::trainCpuBatch(const int n, const float * params){
-    float aSDFtrainGPUBatch(const TrainingParameters & params, const int printtype) {
+    float minibtrainGPUBatch(const TrainingParameters & params, const int printtype) {
 
         if (printtype != PRINT_OFF)
             print_parameters(params);
@@ -729,7 +729,7 @@ private:
 
         //epochs training
         for (int epoch = 1; epoch <= params.max_epochs && quit == false; epoch++) {
-            for(int mini_epochs = 0; mini_epochs < 1; ++mini_epochs)
+            for(int mini_epochs = 0; mini_epochs < 10; ++mini_epochs)
             for (int mini = 0; mini + numOfMinibatchInstances < numOfTotalInstances; mini += numOfMinibatchInstances) {
 
 
@@ -773,18 +773,18 @@ private:
                 */
 
                 GPUForward(devValues, devWeights,
-                    actFuncts, numOfLayers, layersSize, numOfMinibatchInstances, numOfMinibatchInstances,
+                    actFuncts, numOfLayers, layersSize, numOfMinibatchInstances,
                     &offsetIns[0], &offsetWeights[0], &offsetOuts[0]);
 
                 //computes all the instances backward of the backpropagation training
                 GPUBack(devValues, devWeights, devDeltas,
-                    actFuncts, numOfLayers, layersSize, numOfMinibatchInstances, numOfMinibatchInstances, numOfOutputsPerInstance,
+                    actFuncts, numOfLayers, layersSize, numOfMinibatchInstances, numOfOutputsPerInstance,
                     devTrainingSetOutputs, &offsetWeights[0], &offsetDeltas[0], &offsetOuts[0],
                     params.errorFunc);
 
                 //update the weights using the deltas
                 GPUUpdate(devValues, devWeights, devDeltas,
-                    numOfLayers, layersSize, numOfMinibatchInstances, numOfMinibatchInstances,
+                    numOfLayers, layersSize, numOfMinibatchInstances,
                     &offsetIns[0], &offsetWeights[0], &offsetDeltas[0],
                     params.momentum, devOldWeights, params.learningRate);
 
@@ -1037,7 +1037,7 @@ private:
         std::cout << numOfWeights << " elements for network weights" << "\n";
         stat = cublasAlloc(numOfWeights, element_bytesize, (void**)&devWeights);
         testAllocSuccess();
-        if (params.momentum) {
+        if (params.momentum > 0) {
             std::cout << numOfWeights << " elements for network weights (momentums)" << "\n";
             stat = cublasAlloc(numOfWeights, element_bytesize, (void**)&devOldWeights);
             testAllocSuccess();
@@ -1098,25 +1098,25 @@ private:
             int ind = 0, aux = 0;
             if (params.shuff == SHUFFLE_ON)
                 for (int i = 0; i<numOfInstances; i++) {
-                    ind = gen_random_int(i, numOfInstances - 1);
+                    ind = gen_uniform_int(i, numOfInstances - 1);
                     aux = order[ind];
                     order[ind] = order[i];
                     order[i] = aux;
                 }
 
             GPUForward(devValues, devWeights,
-                actFuncts, numOfLayers, layersSize, numOfInstances, numOfInstances,
+                actFuncts, numOfLayers, layersSize, numOfInstances,
                 &offsetIns[0], &offsetWeights[0], &offsetOuts[0]);
 
             //computes all the instances backward of the backpropagation training
             GPUBack(devValues, devWeights, devDeltas,
-                actFuncts, numOfLayers, layersSize, numOfInstances, numOfInstances, numOfOutputsPerInstance,
+                actFuncts, numOfLayers, layersSize, numOfInstances, numOfOutputsPerInstance,
                 devTrainingSetOutputs, &offsetWeights[0], &offsetDeltas[0], &offsetOuts[0],
                 params.errorFunc);
 
             //update the weights using the deltas
             GPUUpdate(devValues, devWeights, devDeltas,
-                numOfLayers, layersSize, numOfInstances, numOfInstances,
+                numOfLayers, layersSize, numOfInstances,
                 &offsetIns[0], &offsetWeights[0], &offsetDeltas[0],
                 params.momentum, devOldWeights, params.learningRate);
 
@@ -1155,7 +1155,6 @@ private:
                         printf("        Error on test set %.10f", mseTest);
 
                     if (bestClassTestNet) {
-                        //float per=net->classificatePerc(*testSet);
                         float per = GPUclassificatePerc(devTestValues, devWeights, actFuncts, numOfLayers, layersSize, numOfTestInstances, numOfOutputsPerInstance, devTestSetOutputs, &offsetTestIns[0], &offsetWeights[0], &offsetTestOuts[0]);
                         if (printtype == PRINT_ALL)
                             printf("        Classification percentage on test set: %.1f%%", per * 100);
@@ -1211,6 +1210,9 @@ private:
         else
             return mseTrain;
     }
+
+
+
 #endif
 
     ///computes a single instance forward of the backpropagation training
@@ -1321,12 +1323,12 @@ private:
     void GPUForward(
         float * devValues, const  float * devWeights,
         const  int * actFuncts, const  int numOfLayers, const  int * layersSize,
-        const int totNumOfInstances, const int numOfInstancesToUse,
+        const int numOfInstances,
         const int * offsetIns, const int * offsetWeights, const int * offsetOuts) {
         //loops the layers
         for (int i = 0; i < numOfLayers - 1; i++) {
 
-            int ninput = totNumOfInstances;
+            int ninput = numOfInstances;
             int naux = layersSize[i] + 1;
             int noutput = layersSize[i + 1];
 
@@ -1340,13 +1342,13 @@ private:
             //does the product of the neurons matrix and the weights matrix
             //the weights matrix is row-major so no translation is necessary
             cublasSgemm('n', 'n',
-                numOfInstancesToUse, noutput, naux,
+                ninput, noutput, naux,
                 1, devPtrA, ninput,
                 devPtrB, naux,
                 0, devPtrC, ninput
             );
 
-            computeActFunct(devPtrC, numOfInstancesToUse*noutput, actFuncts[i + 1]);
+            computeActFunct(devPtrC, numOfInstances*noutput, actFuncts[i + 1]);
 
         }
 
@@ -1356,17 +1358,17 @@ private:
     void GPUBack(
         const float * devValues, const float * devWeights, float * devDeltas,
         const int * actFuncts, const int numOfLayers, const int *layersSize,
-        const int totNumOfInstances, const int numOfInstancesToUse, const int numOfOutputsPerInstance,
+        const int numOfInstances, const int numOfOutputsPerInstance,
         const float * devTrainingSetOutputs, const int *offsetWeights, const int *offsetDeltas, const int * offsetOuts, const int errorFunc) {
         //loop layers backwards (from last hidden to inputs)
         for (int i = numOfLayers - 2; i >= 0; i--) {
             //output layer (different rule) and no bias (for nextLayerSize)
             if (i == numOfLayers - 2) {
-                computeError(devDeltas + offsetDeltas[i], devTrainingSetOutputs, devValues + offsetOuts[i], numOfInstancesToUse*numOfOutputsPerInstance, actFuncts[i + 1], errorFunc);
+                computeError(devDeltas + offsetDeltas[i], devTrainingSetOutputs, devValues + offsetOuts[i], numOfInstances*numOfOutputsPerInstance, actFuncts[i + 1], errorFunc);
             }
             //normal hidden layer
             else {
-                int ninput = totNumOfInstances;
+                int ninput = numOfInstances;
                 int naux = layersSize[i + 2];
                 int noutput = layersSize[i + 1] + 1;
 
@@ -1380,13 +1382,13 @@ private:
                 //does the product of the deltas matrix and the weights matrix
                 //the weights matrix is row-major so must be translated to multiply. also the index is noutput
                 cublasSgemm('n', 't',
-                    numOfInstancesToUse, noutput, naux,
+                    ninput, noutput, naux,
                     1, devPtrA, ninput,
                     devPtrB, noutput,
                     0, devPtrC, ninput
                 );
             }
-            computeDerivFunct(devDeltas + offsetDeltas[i], devValues + offsetOuts[i], numOfInstancesToUse*layersSize[i + 1], actFuncts[i + 1]);
+            computeDerivFunct(devDeltas + offsetDeltas[i], devValues + offsetOuts[i], numOfInstances*layersSize[i + 1], actFuncts[i + 1]);
         }
     }
 
@@ -1394,7 +1396,7 @@ private:
     void GPUUpdate(
         const float * devValues, float * devWeights, const float *devDeltas,
         const int numOfLayers, const int * layersSize,
-        const int totNumOfInstances, const int numOfInstancesToUse,
+        const int numOfInstances,
         const int * offsetIns, const int * offsetWeights, const int * offsetDeltas,
         const float momentum, float * devOldWeights, const float learningRate) {
 
@@ -1402,7 +1404,7 @@ private:
         for (int i = 0; i < numOfLayers - 1; i++) {
 
             int ninput = layersSize[i] + 1;
-            int naux = totNumOfInstances;
+            int naux = numOfInstances;
             int noutput = layersSize[i + 1];
 
             const float * devPtrA;
@@ -1420,8 +1422,8 @@ private:
             //does the product of neurons matrix and the deltas matrix and add them to weights matrix (after multiplying with learning rate and dividing by nOfIstances)
             //the neurons matrix is translated to multiply
             cublasSgemm('t', 'n',
-                ninput, noutput, numOfInstancesToUse,
-                learningRate / (float)totNumOfInstances, devPtrA, naux,
+                ninput, noutput, numOfInstances,
+                learningRate / (float)numOfInstances, devPtrA, naux,
                 devPtrB, naux,
                 1, devPtrC, ninput
             );
@@ -1466,20 +1468,17 @@ private:
 
     ///GPU computes the classification percentage on a set
     float GPUclassificatePerc(float * devValues, const  float * devWeights, const  int * actFuncts, const  int numOfLayers, const  int * layersSize, const int numOfInstances, const int numOfOutputsPerInstance, float * devSetOutputs, const int * offsetIns, const int * offsetWeights, const int * offsetOuts) {
-
+        
         //loops the layers
-        for (int i = 0; i<numOfLayers - 1; i++) {
+        for (int i = 0; i < numOfLayers - 1; i++) {
 
             int ninput = numOfInstances;
             int naux = layersSize[i] + 1;
             int noutput = layersSize[i + 1];
 
-            const float * devPtrA;
-            const float * devPtrB;
-            float * devPtrC;
-            devPtrA = devValues + offsetIns[i];
-            devPtrB = devWeights + offsetWeights[i];
-            devPtrC = devValues + offsetOuts[i];
+            const float * devPtrA = devValues + offsetIns[i];
+            const float * devPtrB = devWeights + offsetWeights[i];
+            float * devPtrC = devValues + offsetOuts[i];
 
             //does the product of the neurons matrix and the weights matrix
             //the weights matrix is row-major so no translation is necessary
@@ -1493,7 +1492,7 @@ private:
             computeActFunct(devPtrC, ninput*noutput, actFuncts[i + 1]);
 
         }
-
+        
 
         std::vector<int> valuesIndexes(numOfInstances);
         std::vector<int> outputIndexes(numOfInstances);
@@ -1516,19 +1515,20 @@ private:
         computeMaxes(numOfInstances, numOfOutputsPerInstance, tmpTranslate, devOutputIndexes);
 
         cudaFree(tmpTranslate);
-
-
+        
         cudaMemcpy(&valuesIndexes[0], devValuesIndexes, numOfInstances * sizeof(int), cudaMemcpyDeviceToHost);
         cudaMemcpy(&outputIndexes[0], devOutputIndexes, numOfInstances * sizeof(int), cudaMemcpyDeviceToHost);
-
+        
         //compute the actual rate comparing the correct classification and the one of the net
         int cont = 0;
         for (int i = 0; i<numOfInstances; i++) {
-            if (valuesIndexes[i] == outputIndexes[i])cont++;
-        }
+            if (valuesIndexes[i] == outputIndexes[i])
+                cont++;
+        }        
 
         cudaFree(devValuesIndexes);
         cudaFree(devOutputIndexes);
+
         return (float)cont / (float)numOfInstances;
     }
 #endif
