@@ -79,16 +79,24 @@ void test_all(const FeedForwardNN & mynet, const LearningSet & testSet) {
 }
 
 int main(){
-    std::string base = R"(c:\users\luca\desktop\)";
+    auto aditrain = LearningSet::readBinarySet("adi_train.set");
+    auto aditest = LearningSet::readBinarySet("adi_test.set");
+
+    aditrain.writeInOutSet("adi_train_ins", "adi_train_outs");
+    aditest.writeInOutSet("adi_test_ins", "adi_test_outs");
+    return 0;
+
+
+    std::string base = R"(c:\users\luca\desktop\adidas_project\trunk\vision_code\my_tom_tests_adi2\)";
 
     
     auto fronti = LearningSet::readSimplifiedSet(std::string(base +"points_front.set").c_str());
     auto retri = LearningSet::readSimplifiedSet(std::string(base + "points_back.set").c_str());
 
-    fronti = fronti.shuffle();
-    retri = retri.shuffle();
+ //   fronti = fronti.shuffle();
+ //   retri = retri.shuffle();
 
-    int split = 12 * 20;
+    int split = 15 * 20;
 
     int n = 0;
     n = 0;
@@ -290,7 +298,8 @@ int main(){
     FeedForwardNN mynet(layers.size(),&layers[0],&functs[0]);
     mynet.initWeightsUniform(-0.01, 0.01);
     //mynet.initWeightsGaussian(1.0, 0.01);
-    //mynet.initWidrowNguyen(testSet);
+    //mynet.initWeightsWidrowNguyen(testSet);
+    mynet.initWeightsBengio(0.1);
     
     FeedForwardNNTrainer trainer;
     trainer.selectNet(mynet);
@@ -383,7 +392,7 @@ int main(){
     
     //compute the network (for example an xor function) from inputs in[0] and in[1] and puts the result in out[0]
     net.compute(in,out);
-    printf("%f\n",out[0]);
+    std::cout << out[0] << "\n";
 */
 }
 

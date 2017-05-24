@@ -16,6 +16,6 @@ inline float errorFunction(float error, int func){
                             else if    (error >  .9999999)       return 17.0;
                             else                                 return log((1.0 + error) / (1.0 - error));
         case ERROR_LINEAR:                                       return error;
-        default:            printf("FUNCTION NOT IMPLEMENTED YET\n");exit(1);
+        default:            throw std::runtime_error("Function not yet implemented");
     }
 }

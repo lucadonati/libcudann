@@ -76,14 +76,14 @@ void GAFeedForwardNN::init(const int pop,const int gen,const int selection,const
 	nhidlayers=nhid;
 	maxdimhiddenlayers=maxdimhid;
 
-	if(popsize<=1){printf("POPULATION SIZE SHOULD BE 2 OR MORE\n");exit(1);}
-	if(generations<1){printf("AT LEAST ONE GENERATION SHOULD BE EVOLVED\n");exit(1);}
-	if(selectionalgorithm<0||selectionalgorithm>2){printf("SELECTION ALGORITHM NOT IMPLEMENTED YET\n");exit(1);}
-	if(numberofevaluations<1){printf("AT LEAST ONE EVALUATION SHOULD BE DONE\n");exit(1);}
-	if(pcross<0||pcross>1){printf("CROSSOVER PROBABILITY SHOULD BE BETWEEN 0 AND 1\n");exit(1);}
-	if(pmut<0||pmut>1){printf("MUTATION PROBABILITY SHOULD BE BETWEEN 0 AND 1\n");exit(1);}
-	if(nhidlayers<0){printf("HIDDEN LAYERS NUMBER CAN'T BE NEGATIVE\n");exit(1);}
-	if(maxdimhiddenlayers<1){printf("HIDDEN LAYERS SHOULD HAVE AT LEAT 1 NEURON\n");exit(1);}
+	if(popsize<=1){throw std::runtime_error("POPULATION SIZE SHOULD BE 2 OR MORE");}
+	if(generations<1){ throw std::runtime_error("AT LEAST ONE GENERATION SHOULD BE EVOLVED");}
+	if(selectionalgorithm<0||selectionalgorithm>2){ throw std::runtime_error("SELECTION ALGORITHM NOT IMPLEMENTED YET");}
+	if(numberofevaluations<1){ throw std::runtime_error("AT LEAST ONE EVALUATION SHOULD BE DONE");}
+	if(pcross<0||pcross>1){ throw std::runtime_error("CROSSOVER PROBABILITY SHOULD BE BETWEEN 0 AND 1");}
+	if(pmut<0||pmut>1){ throw std::runtime_error("MUTATION PROBABILITY SHOULD BE BETWEEN 0 AND 1");}
+	if(nhidlayers<0){ throw std::runtime_error("HIDDEN LAYERS NUMBER CAN'T BE NEGATIVE");}
+	if(maxdimhiddenlayers<1){ throw std::runtime_error("HIDDEN LAYERS SHOULD HAVE AT LEAT 1 NEURON");}
 
 	delete [] chromosomes;
 	chromosomes=new FloatChromosome[popsize];
@@ -125,7 +125,7 @@ void GAFeedForwardNN::init(const int pop,const int gen,const int selection,const
 //printtype specifies how much verbose will be the execution (PRINT_ALL,PRINT_MIN,PRINT_OFF)
 void GAFeedForwardNN::evolve(const int n, const float * params, const int printtype){
 
-	if(n<5){printf("TOO FEW PARAMETERS FOR TRAINING\n");exit(1);}
+	if(n<5){throw std::runtime_error("TOO FEW PARAMETERS FOR TRAINING");}
     std::vector<int> layers(nhidlayers+2);
     std::vector<int> functs(nhidlayers+2);
 	float learningRate;
@@ -144,12 +144,12 @@ void GAFeedForwardNN::evolve(const int n, const float * params, const int printt
 		int bestFitGenIndex=0;
 		totfitness=0;
 
-		printf("GENERATION NUMBER:\t%d\n\n",gen);
+		std::cout << "GENERATION NUMBER:\t" << gen << "\n\n";
 
 		//fitness evaluation of each individual
 		for(int i=0;i<popsize;i++){
 
-			printf("\nINDIVIDUAL N:\t%d\n",i);
+			std::cout << "\nINDIVIDUAL N:\t" << i << "\n";
 
 			//decode the chromosome hidden layers sizes
 			for(int j=0;j<nhidlayers;j++){
@@ -225,14 +225,14 @@ void GAFeedForwardNN::evolve(const int n, const float * params, const int printt
 			switch(selectionalgorithm){
 				case ROULETTE_WHEEL:		firstmate=rouletteWheel(popsize,&fitnesses[0]);					break;
 				case TOURNAMENT_SELECTION:	firstmate=tournament(popsize,&fitnesses[0],popsize/5+1);		break;
-				default:					printf("SELECTION ALGORITHM NOT IMPLEMENTED YET\n");exit(1);break;
+                default:					throw std::runtime_error("SELECTION ALGORITHM NOT IMPLEMENTED YET");break;
 			}
 			//second mate
 			do{
 				switch(selectionalgorithm){
 					case ROULETTE_WHEEL:		secondmate=rouletteWheel(popsize,&fitnesses[0]);				break;
 					case TOURNAMENT_SELECTION:	secondmate=tournament(popsize,&fitnesses[0],popsize/5+1);		break;
-					default:					printf("SELECTION ALGORITHM NOT IMPLEMENTED YET\n");exit(1);break;
+					default:					throw std::runtime_error("SELECTION ALGORITHM NOT IMPLEMENTED YET");break;
 				}
 			}while(firstmate==secondmate);
 

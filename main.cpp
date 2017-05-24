@@ -116,7 +116,7 @@ int main(){
 	
 	//compute the network (for example an xor function) from inputs in[0] and in[1] and puts the result in out[0]
 	net.compute(in,out);
-	printf("%f\n",out[0]);
+	std::cout << out[0] << "\n";
 */
 }
 

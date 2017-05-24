@@ -151,7 +151,20 @@ public:
 
         write_instances_to_ofs(ofs);
     }
-
+    void writeInOutSet(std::string ins, std::string outs) {
+        std::ofstream ins_file(ins);
+        for(int i = 0; i < inputs.size(); ++i) {
+            ins_file << inputs[i] << " ";
+            if ((i + 1) % numOfInputsPerInstance  == 0)
+                ins_file << "\n";
+        }
+        std::ofstream outs_file(outs);
+        for(int i = 0; i < outputs.size(); ++i) {
+            outs_file << outputs[i] << " ";
+            if ((i + 1) % numOfOutputsPerInstance  == 0)
+                outs_file << "\n";
+        }
+    }
     static LearningSet readBinarySet(const char * s) {
         LearningSet set;
         std::ifstream ifs(s, std::ofstream::binary);

@@ -26,7 +26,8 @@ public:
 
     /// constructor with int (number of layers), array (layer sizes), array (activation functions)
     FeedForwardNN(const int num, const int * siz, const int * funct) {
-        if (num<2) { printf("BAD NETWORK INITIALIZATION\n"); exit(1); }
+        if (num<2)
+            throw std::runtime_error("Bad network initialization");
 
         numOfLayers = num;
         layersSize.resize(numOfLayers);
@@ -106,7 +107,7 @@ public:
     }
 
     /// initialize the network weights with Widrow Nguyen algorithm
-    void initWidrowNguyen(const LearningSet & set) {
+    void initWeightsWidrowNguyen(const LearningSet & set) {
         float min = set.getInputs()[0];
         float max = set.getInputs()[0];
 
@@ -143,12 +144,30 @@ public:
                         weights[offsetWeights[i] + j*(layersSize[i] + 1) + k] = 2 * mult*gen_uniform_real(0, 1) - mult;
     }
 
+    void initWeightsBengio(double scale = 1) {
+        auto offs = get_weight_offsets();
+        auto nlayers = getNumOfLayers();
+
+        for (int i = 0; i < nlayers - 1; ++i) {
+            auto from = &weights[0] + offs[i];
+            auto to = &weights[0] + offs[i + 1];
+
+            while (from != to) {
+                //std::cout << std::sqrt(getLayersSize()[i]) << "\n";
+                double r = std::sqrt(1.0 / (getLayersSize()[i] +
+                                            getLayersSize()[i + 1]) * scale);
+                *from = gen_uniform_real(-r, r);
+                ++from;
+            }
+        }
+    }
+
 
 
     /// computes the net outputs
     void compute(const float * inputs, float * outputs) const {
 
-        int offset = 0;
+        
 
         std::vector<float> in(layersSize[0] + 1);
         //loads the inputs
@@ -163,7 +182,7 @@ public:
             //bias
             in[layersSize[i]] = 1.0;
 
-            offset = 0;
+            int offset = 0;
             for (int j = 0; j<i; j++) {
                 offset += (layersSize[j] + 1)*layersSize[j + 1];
             }
@@ -278,14 +297,14 @@ public:
             throw std::runtime_error(std::string("Error occourred while saving network ") + s);
     }
 
-    const auto * getLayersSize() const {
+    const int * getLayersSize() const {
         return &layersSize[0];
     }
 
-    auto getNumOfLayers() const {
+    int getNumOfLayers() const {
         return numOfLayers;
     }
-    auto getNumOfWeights() const {
+    int getNumOfWeights() const {
         return numOfWeights;
     }
 
