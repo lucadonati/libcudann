@@ -43,7 +43,7 @@ public:
      /// .
      ///
      /// spaces or \n do not matter
-    static LearningSet readFannSet(const char * s) {
+    static LearningSet readFannSet(const std::string & s) {
         LearningSet set;
         std::ifstream ifs(s);
         //file not found
@@ -75,7 +75,7 @@ public:
         }
         return set;
     }
-    void writeFannSet(const char * s) {
+    void writeFannSet(const std::string & s) {
         std::ofstream ofs(s);
         ofs << numOfInstances << " " << numOfInputsPerInstance << " " << numOfOutputsPerInstance << "\n";
 
@@ -98,7 +98,7 @@ public:
     /// .
     ///
     /// spaces do not matter. each line must end with \n. empty lines are fine
-    static LearningSet readSimplifiedSet(const char * s) {
+    static LearningSet readSimplifiedSet(const std::string & s) {
         LearningSet set;
         std::ifstream ifs(s);
         //file not found
@@ -146,12 +146,67 @@ public:
         
         return set;
     }
-    void writeSimplifiedSet(const char * s) {
+    void writeSimplifiedSet(const std::string & s) {
         std::ofstream ofs(s);
 
         write_instances_to_ofs(ofs);
     }
-    void writeInOutSet(std::string ins, std::string outs) {
+    static LearningSet readInOutSet(const std::string & in, const std::string & out) {
+        LearningSet set;
+        std::ifstream in_fs(in);
+        //file not found
+        if (!in_fs)
+            throw std::runtime_error(std::string("Couldn't open the In learning set file: ") + in);
+        std::ifstream out_fs(out);
+        //file not found
+        if (!out_fs)
+            throw std::runtime_error(std::string("Couldn't open the Out learning set file: ") + out);
+        
+
+        std::string line;
+        while (std::getline(in_fs, line)) {
+            if (!in_fs)
+                break;
+            std::istringstream iss(line);
+            while (iss) {
+                float tmp = 0.0;
+                iss >> tmp;
+                if (iss.fail())
+                    break;
+                
+                set.inputs.push_back(tmp);
+            }
+            if (set.numOfInputsPerInstance == 0)
+                set.numOfInputsPerInstance = set.inputs.size();
+        }
+        while (std::getline(out_fs, line)) {
+            if (!out_fs)
+                break;
+            std::istringstream iss(line);
+            while (iss) {
+                float tmp = 0.0;
+                iss >> tmp;
+                if (iss.fail())
+                    break;
+
+                set.outputs.push_back(tmp);
+            }
+            if (set.numOfOutputsPerInstance == 0)
+                set.numOfOutputsPerInstance = set.outputs.size();
+        }
+
+
+        set.numOfInstances = int(set.inputs.size()) / set.numOfInputsPerInstance;
+        
+        if (int(set.inputs.size() % set.numOfInstances) != 0)
+            throw std::runtime_error(std::string("Wrong number of inputs ") + std::to_string(set.inputs.size()) + " with " + std::to_string(set.numOfInstances) + " instances.");
+
+        if (int(set.outputs.size() % set.numOfInstances) != 0)
+            throw std::runtime_error(std::string("Wrong number of outputs: ") + std::to_string(set.outputs.size()) + " with " + std::to_string(set.numOfInstances) + " instances.");
+
+        return set;
+    }
+    void writeInOutSet(const std::string & ins, const std::string & outs) {
         std::ofstream ins_file(ins);
         for(int i = 0; i < inputs.size(); ++i) {
             ins_file << inputs[i] << " ";
@@ -165,7 +220,7 @@ public:
                 outs_file << "\n";
         }
     }
-    static LearningSet readBinarySet(const char * s) {
+    static LearningSet readBinarySet(const std::string & s) {
         LearningSet set;
         std::ifstream ifs(s, std::ofstream::binary);
 
@@ -191,7 +246,7 @@ public:
         }
         return set;
     }
-    void writeBinarySet(const char * s) {
+    void writeBinarySet(const std::string & s) {
         std::ofstream ofs(s, std::ofstream::binary);
 
         auto bin_write = [](auto && s, auto && t) {
