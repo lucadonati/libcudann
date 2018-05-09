@@ -25,11 +25,13 @@ public:
     FeedForwardNN() {}
 
     /// constructor with int (number of layers), array (layer sizes), array (activation functions)
-    FeedForwardNN(const int num, const int * siz, const int * funct) {
-        if (num<2)
+    FeedForwardNN(const std::vector<int> & siz, const std::vector<int> & funct) {
+        if (siz.size()<2)
             throw std::runtime_error("Bad network initialization");
+        if (siz.size() != funct.size())
+            throw std::runtime_error("Sizes and functions of different dimensionality");
 
-        numOfLayers = num;
+        numOfLayers = siz.size();
         layersSize.resize(numOfLayers);
         for (int i = 0; i<numOfLayers; i++) {
             layersSize[i] = siz[i];

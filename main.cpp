@@ -2,18 +2,18 @@
 libcudann
 Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 */
-#ifdef NOT_COMPILING
+#define DISABLE_CUDA_NN
 #include <stdio.h>
 #include <iostream>
 
 #include <math.h>
 #include <stdlib.h>
 
-#include "GAFeedForwardNN.h"
-#include "FeedForwardNN.h"
-#include "LearningSet.h"
-#include "FeedForwardNNTrainer.h"
-#include "ActivationFunctions.h"
+#include <genetics/GAFeedForwardNN.h>
+#include <FeedForwardNN.h>
+#include <LearningSet.h>
+#include <FeedForwardNNTrainer.h>
+#include <ActivationFunctions.h>
 
 using namespace std;
 
@@ -23,15 +23,15 @@ int main(){
 
 	//TRAINING EXAMPLE
 
-	LearningSet trainingSet("mushroom.train");
-	LearningSet testSet("mushroom.test");
+    auto trainingSet = LearningSet::readFannSet ("mushroom.train");
+	auto testSet = LearningSet::readFannSet("mushroom.test");
 
 	//layer sizes
-	int layers[]={125,30,2};
+	std::vector<int> layers = {125,30,2};
 	//activation functions (1=sigm,2=tanh)
-	int functs[]={2,1,2};
+    std::vector<int> functs = {2,1,2};
 	//declare the network with the number of layers
-	FeedForwardNN mynet(3,layers,functs);
+	FeedForwardNN mynet(layers,functs);
 	
 	FeedForwardNNTrainer trainer;
 	trainer.selectNet(mynet);
@@ -56,9 +56,18 @@ int main(){
 	//momentum
 	//SHUFFLE_ON - SHUFFLE_OFF
 	//error computation ERROR_LINEAR - ERROR_TANH
-	
-	float param[]={TRAIN_CPU,ALG_BATCH,0.00,1000,10,0.1,0,SHUFFLE_ON,ERROR_TANH};
-	trainer.train(9,param);
+		
+    TrainingParameters params;
+    params.training_location = TRAIN_CPU;
+    params.training_algorithm = ALG_BATCH;
+    params.desired_error = 0.0;
+    params.max_epochs = 1000;
+    params.epochs_between_reports = 10;
+    params.learningRate = 0.1;
+    params.momentum = 0.0;
+    params.shuff = SHUFFLE_ON;
+    params.errorFunc = ERROR_LINEAR;
+	trainer.train(params);
 	 
 	
 	mynet.saveToTxt("../mynetmushrooms.net");
@@ -120,8 +129,6 @@ int main(){
 */
 }
 
-
-#endif
 
 
 
