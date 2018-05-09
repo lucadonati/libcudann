@@ -167,53 +167,17 @@ public:
 
 
     /// computes the net outputs
-    void compute(const float * inputs, float * outputs) const {
+    void compute(const float * inputs, float * outputs,
+                 std::vector<float> & buffer = std::vector<float>()) const {
+        buffer.resize(getNumOfNeurons());
+        //load an array of inputs
+        for (int i = 0; i < getLayersSize()[0]; i++)
+            buffer[i] = inputs[i];
 
-        
-
-        std::vector<float> in(layersSize[0] + 1);
-        //loads the inputs
-        for (int i = 0; i<layersSize[0]; i++)
-            in[i] = inputs[i];
-
-        std::vector<float> out;
-
-        //loops the layers
-        for (int i = 0; i<numOfLayers - 1; i++) {
-
-            //bias
-            in[layersSize[i]] = 1.0;
-
-            int offset = 0;
-            for (int j = 0; j<i; j++) {
-                offset += (layersSize[j] + 1)*layersSize[j + 1];
-            }
-
-            out.resize(layersSize[i + 1]);
-
-            float tot = 0;
-
-
-            //loops the outputs
-            for (int j = 0; j<layersSize[i + 1]; j++) {
-                tot = 0;
-
-                //loops the inputs
-                for (int k = 0; k<layersSize[i] + 1; k++) {
-                    tot += in[k] * weights[k + j*(layersSize[i] + 1) + offset];
-                }
-                out[j] = actFunction(actFuncts[i + 1], tot);
-            }
-
-
-            in.resize(layersSize[i + 1] + 1);
-            for (int l = 0; l<layersSize[i + 1]; l++) {
-                in[l] = out[l];
-            }
-        }
-
+        feedforward(&buffer[0]);
+        auto out_offs = get_output_offsets();
         for (int i = 0; i<layersSize[numOfLayers - 1]; i++)
-            outputs[i] = out[i];
+            outputs[i] = buffer[out_offs[numOfLayers - 2] + i];
 
     }
 
@@ -313,12 +277,23 @@ public:
     auto * getWeights() {
         return &weights[0];
     }
+    const auto * getWeights() const {
+        return &weights[0];
+    }
 
     const auto * getActFuncts() const {
         return &actFuncts[0];
     }
+    /// this includes biases
+    int getNumOfNeurons() const {
+        int numOfNeurons = 0;
+        for (int i = 0; i < getNumOfLayers(); i++) {
+            numOfNeurons += getLayersSize()[i] + 1;
+        }
+        return numOfNeurons;
+    }
     
-    std::vector<int> get_weight_offsets(int scaleFactor = 1) {
+    std::vector<int> get_weight_offsets(int scaleFactor = 1) const {
         std::vector<int> offsetWeights(numOfLayers);
         for (int i = 0; i < numOfLayers; i++) {
             offsetWeights[i] = 0;
@@ -328,7 +303,7 @@ public:
         }
         return offsetWeights;
     }
-    std::vector<int> get_input_offsets(int scaleFactor = 1) {
+    std::vector<int> get_input_offsets(int scaleFactor = 1) const {
         std::vector<int> offsetIns(numOfLayers);
         for (int i = 0; i < numOfLayers; i++) {
             offsetIns[i] = 0;
@@ -338,7 +313,7 @@ public:
         }
         return offsetIns;
     }
-    std::vector<int> get_output_offsets(int scaleFactor = 1) {
+    std::vector<int> get_output_offsets(int scaleFactor = 1) const {
         std::vector<int> offsetOuts(numOfLayers);
         for (int i = 0; i < numOfLayers; i++) {
             offsetOuts[i] = (layersSize[0] + 1) * scaleFactor;
@@ -347,6 +322,51 @@ public:
             }
         }
         return offsetOuts;
+    }
+
+
+    void feedforward(float * values) const {
+        const auto offsetIns = get_input_offsets();
+        const auto offsetWeights = get_weight_offsets();
+        const auto offsetOuts = get_output_offsets();
+
+        const auto * weights = getWeights();
+        const auto * actFuncts = getActFuncts();
+        int numOfLayers = getNumOfLayers();
+        const auto * layersSize = getLayersSize();        
+
+
+        
+
+        //loops the layers
+        for (int i = 0; i < numOfLayers - 1; i++) {
+
+            //bias neuron
+            values[offsetIns[i] + layersSize[i]] = 1.0;
+
+            float tot = 0;
+            //loops the outputs
+            for (int j = 0; j<layersSize[i + 1]; j++) {
+                //unrolled sum of all to avoid some floating points precision problems
+                tot = 0;
+                int k = (layersSize[i] + 1) % 4;
+                int off = j*(layersSize[i] + 1) + offsetWeights[i];
+                switch (k) {
+                    case 3: tot += weights[off + 2] * values[2 + offsetIns[i]];
+                    case 2: tot += weights[off + 1] * values[1 + offsetIns[i]];
+                    case 1: tot += weights[off    ] * values[offsetIns[i]];
+                    case 0:;
+                }
+                for (; k<layersSize[i] + 1; k += 4) {
+                    tot += weights[off + k    ] * values[k + offsetIns[i]] +
+                           weights[off + k + 1] * values[k + 1 + offsetIns[i]] +
+                           weights[off + k + 2] * values[k + 2 + offsetIns[i]] +
+                           weights[off + k + 3] * values[k + 3 + offsetIns[i]];
+                }
+                //write the ouputs of the layer
+                values[j + offsetOuts[i]] = actFunction(actFuncts[i + 1], tot);
+            }
+        }
     }
 
 private:

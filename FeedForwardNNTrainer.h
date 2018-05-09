@@ -201,10 +201,7 @@ private:
         //declare some network values
         int numOfLayers = net->getNumOfLayers();
         int numOfWeights = net->getNumOfWeights();
-        int numOfNeurons = 0;
-        for (int i = 0; i < net->getNumOfLayers(); i++) {
-            numOfNeurons += net->getLayersSize()[i] + 1;
-        }
+        int numOfNeurons = net->getNumOfNeurons();
 
         //declare an array of neurons to represent the neuron values
         std::vector<float> values(numOfNeurons);
@@ -276,7 +273,7 @@ private:
             for (int instance = 0; instance < numOfInstances; instance++) {
 
                 //computes a single instance forward of the backpropagation training
-                stepForward(&values[0], weights, actFuncts, numOfLayers, layersSize, numOfInputsPerInstance, trainingSetInputs, &offsetIns[0], &offsetWeights[0], &offsetOuts[0], &order[0], instance);
+                stepForward(&values[0], numOfInputsPerInstance, trainingSetInputs, &order[0], instance);
 
                 //computes a single instance backward of the backpropagation training
                 stepBack(&values[0], weights, &deltas[0], actFuncts, numOfLayers, layersSize, numOfOutputsPerInstance, trainingSetOutputs, &offsetWeights[0], &offsetDeltas[0], &offsetOuts[0], &order[0], instance, params.errorFunc);
@@ -443,7 +440,7 @@ private:
             for (int instance = 0; instance<numOfInstances; instance++) {
 
                 //computes a single instance forward of the backpropagation training
-                stepForward(&values[0], weights, actFuncts, numOfLayers, layersSize, numOfInputsPerInstance, trainingSetInputs, &offsetIns[0], &offsetWeights[0], &offsetOuts[0], &order[0], instance);
+                stepForward(&values[0], numOfInputsPerInstance, trainingSetInputs, &order[0], instance);
 
                 //computes a single instance backward of the backpropagation training
                 stepBack(&values[0], weights, &deltas[0], actFuncts, numOfLayers, layersSize, numOfOutputsPerInstance, trainingSetOutputs, &offsetWeights[0], &offsetDeltas[0], &offsetOuts[0], &order[0], instance, params.errorFunc);
@@ -864,39 +861,14 @@ private:
 #endif
 
     ///computes a single instance forward of the backpropagation training
-    void stepForward(float * values, const  float * weights, const  int * actFuncts, const  int numOfLayers, const  int * layersSize, const  int numOfInputsPerInstance, const float * trainingSetInputs, const int * offsetIns, const int * offsetWeights, const int * offsetOuts, const int * order, const int instance) {
+    void stepForward(float * values, const int numOfInputsPerInstance, const float * trainingSetInputs,
+        const int * order, const int instance) {
+        
         //load an array of inputs
         for (int i = 0; i < numOfInputsPerInstance; i++)
             values[i] = trainingSetInputs[order[instance] * numOfInputsPerInstance + i];
 
-        //loops the layers
-        for (int i = 0; i < numOfLayers - 1; i++) {
-
-            //bias neuron
-            values[offsetIns[i] + layersSize[i]] = 1.0;
-
-            float tot = 0;
-            //loops the outputs
-            for (int j = 0; j<layersSize[i + 1]; j++) {
-                //unrolled sum of all to avoid some floating points precision problems
-                tot = 0;
-                int k = (layersSize[i] + 1) % 4;
-                switch (k) {
-                    case 3:tot += weights[2 + j*(layersSize[i] + 1) + offsetWeights[i]] * values[2 + offsetIns[i]];
-                    case 2:tot += weights[1 + j*(layersSize[i] + 1) + offsetWeights[i]] * values[1 + offsetIns[i]];
-                    case 1:tot += weights[j*(layersSize[i] + 1) + offsetWeights[i]] * values[offsetIns[i]];
-                    case 0:break;
-                }
-                for (; k<layersSize[i] + 1; k += 4) {
-                    tot += weights[k + j*(layersSize[i] + 1) + offsetWeights[i]] * values[k + offsetIns[i]] +
-                        weights[k + 1 + j*(layersSize[i] + 1) + offsetWeights[i]] * values[k + 1 + offsetIns[i]] +
-                        weights[k + 2 + j*(layersSize[i] + 1) + offsetWeights[i]] * values[k + 2 + offsetIns[i]] +
-                        weights[k + 3 + j*(layersSize[i] + 1) + offsetWeights[i]] * values[k + 3 + offsetIns[i]];
-                }
-                //write the ouputs of the layer
-                values[j + offsetOuts[i]] = actFunction(actFuncts[i + 1], tot);
-            }
-        }
+        net->feedforward(values);
     }
 
     ///computes a single instance backward of the backpropagation training
@@ -961,8 +933,6 @@ private:
                     }
                 }
             }
-
-
 
     }
 
