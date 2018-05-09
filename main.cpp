@@ -2,7 +2,7 @@
 libcudann
 Copyright (C) 2011 Luca Donati (lucadonati85@gmail.com)
 */
-#define DISABLE_CUDA_NN
+//#define DISABLE_CUDA_NN
 #include <stdio.h>
 #include <iostream>
 
@@ -75,7 +75,8 @@ int main(){
 	//mseT.saveToTxt("../mseTmushrooms.net");
 	//mseTT.saveToTxt("../mseTTmushrooms.net");
 	//cl.saveToTxt("../clmushrooms.net");
-
+    int a;
+    std::cin >> a;
 
 /*	//EVOLUTION EXAMPLE
 

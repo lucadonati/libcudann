@@ -982,7 +982,7 @@ private:
         for (int i = numOfLayers - 2; i >= 0; i--) {
             //output layer (different rule) and no bias (for nextLayerSize)
             if (i == numOfLayers - 2) {
-                computeError(devDeltas + offsetDeltas[i], devTrainingSetOutputs, devValues + offsetOuts[i], numOfInstances*numOfOutputsPerInstance, actFuncts[i + 1], errorFunc);
+                computeError(devTrainingSetOutputs, devValues + offsetOuts[i], devDeltas + offsetDeltas[i], numOfInstances*numOfOutputsPerInstance, actFuncts[i + 1], errorFunc);
             }
             //normal hidden layer
             else {
