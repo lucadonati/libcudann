@@ -246,6 +246,46 @@ public:
         }
         return set;
     }
+    static LearningSet readBinaryCifarBinarySet(const std::string & s, int num_input_per_instance, int num_output_per_instance) {
+        LearningSet set;
+        std::ifstream ifs(s, std::ofstream::binary);
+
+        auto GetFileSize = [](std::string filename) -> long {
+            struct stat stat_buf;
+            int rc = stat(filename.c_str(), &stat_buf);
+            return rc == 0 ? stat_buf.st_size : -1;
+        };
+
+        auto bin_read = [](auto && s, auto && t) {
+            s.read(reinterpret_cast<char*>(&t), sizeof(t));
+        };
+
+        set.numOfInstances = GetFileSize(s) / (num_input_per_instance + 1);
+        set.numOfInputsPerInstance = num_input_per_instance;
+        set.numOfOutputsPerInstance = num_output_per_instance;
+
+        set.inputs.resize(set.numOfInstances * set.numOfInputsPerInstance);
+        set.outputs.resize(set.numOfInstances * set.numOfOutputsPerInstance);
+
+        int i_ind = 0;
+        int o_ind = 0;
+        for (int n = 0; n < set.numOfInstances; ++n) {
+            uint8_t v;
+            bin_read(ifs, v);
+            for (int i = 0; i < set.numOfOutputsPerInstance; ++i) {
+                if(i == v)
+                    set.outputs[o_ind++] = 1;
+                else
+                    set.outputs[o_ind++] = 0;
+            }
+
+            for (int i = 0; i < set.numOfInputsPerInstance; ++i) {
+                bin_read(ifs, v);
+                set.inputs[i_ind++] = v;
+            }
+        }
+        return set;
+    }
     void writeBinarySet(const std::string & s) {
         std::ofstream ofs(s, std::ofstream::binary);
 
